@@ -62,10 +62,19 @@ usb.enumerate ──► identification.resolve ──► drivers.candidates
    execução exige consentimento explícito.
 5. Rede: um único ponto de saída, desligável com `--no-network`.
 
-## Decisões abertas (fecham com a pesquisa)
+## Decisões abertas → RESOLVIDAS pela pesquisa (M2)
 
-- Formato exato aceito por cada driver em `new_id` (variou por driver:
-  `.no_dynamic_id` bloqueia o mecanismo em alguns casos — evidência no
-  relatório do agente Realtek).
-- Persistência padrão do bind: alias modprobe.d vs regra udev.
-- Detecção de pacote de firmware por família de distro.
+1. **Feasibility de `new_id` por driver** (`docs/research/realtek.md` §1,
+   `linux-kernel.md` §3): `rtl8xxxu` tem `.no_dynamic_id = 1` — Estado B para
+   os chips AC da Realtek NÃO tem reparo por bind dinâmico; o planner consulta
+   matriz de capacidade por módulo (`drivers/new_id_feasible: bool`) e produz
+   diagnóstico+alternativa quando infeasible.
+2. **Persistência do bind**: alias em `/etc/modprobe.d/*.conf`
+   (`linux-kernel.md` §4) — declarativo, reversível, sobrevive a upgrade.
+3. **Pacotes de firmware**: mapa arquivo→pacote por família de distro
+   (`firmware-supply-chain.md`, `mediatek-atheros.md` §6); origem sempre
+   gerenciador da distro ou git upstream com hash (ADR 0002 S4).
+4. **Colisões de alias são reais** (`mediatek-atheros.md` §5): candidatos
+   múltiplos por VID:PID; dmesg + bound driver arbitraram.
+5. **Divergência de kernel** (host real): diagnosticar sempre contra o tree
+   em execução e sinalizar reboot pendente (kernel novo instalado).
