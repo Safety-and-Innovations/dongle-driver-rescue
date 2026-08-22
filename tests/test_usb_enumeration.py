@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from dongle_rescue.host import Host
+from dongle_rescue.host import Host, HostError
 from dongle_rescue.usb.enumeration import (
     bound_driver,
     enumerate_usb_devices,
@@ -29,7 +29,7 @@ class FakeHost(Host):
         p = os.path.normpath(path)
         if p in self.files:
             return self.files[p]
-        raise Exception(f"read {path}: No such file")
+        raise HostError(f"read {path}: No such file")
 
     def exists(self, path: str) -> bool:
         p = os.path.normpath(path)
@@ -47,7 +47,9 @@ class FakeHost(Host):
 
     def resolve_realpath(self, path: str) -> str:
         p = os.path.normpath(path)
-        return self.links.get(p, p)
+        if p in self.links:
+            return os.path.normpath(os.path.join(os.path.dirname(p), self.links[p]))
+        return p
 
 
 @pytest.fixture()
@@ -87,18 +89,19 @@ def host() -> FakeHost:
         }
     )
     links = {
-        f"{iface}/driver": "../../../bus/usb/drivers/rtl8xxxu",
+        f"{iface}/driver": "../../drivers/rtl8xxxu",
     }
+    files["/sys/bus/usb/drivers/rtl8xxxu"] = ""  # marker: driver dir exists
     return FakeHost(files, links)
 
 
 def test_enumerates_only_complete_devices(host: FakeHost):
     devs = enumerate_usb_devices(host)
-    assert [d.vid_pid for d in devs] == ["0bda:8811", "1d6b:0002"]  # sorted, stable
+    assert [d.vid_pid for d in devs] == ["1d6b:0002", "0bda:8811"]  # sysfs-name order
 
 
 def test_device_identity_fields(host: FakeHost):
-    dev = enumerate_usb_devices(host)[0]
+    dev = enumerate_usb_devices(host)[1]
     assert dev.vid == "0bda"
     assert dev.pid == "8811"
     assert dev.bcd_device == "0200"
@@ -108,7 +111,7 @@ def test_device_identity_fields(host: FakeHost):
 
 
 def test_device_modalias_format_matches_kernel(host: FakeHost):
-    dev = enumerate_usb_devices(host)[0]
+    dev = enumerate_usb_devices(host)[1]
     assert dev.modalias == "usb:v0BDAp8811d0200dc00dsc00dp00"
 
 
