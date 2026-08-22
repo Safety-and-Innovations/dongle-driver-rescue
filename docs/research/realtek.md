@@ -93,11 +93,15 @@ clones (fóruns técnicos; exigiria experimento com hardware físico).
 
 ## 6. Verificação local (host)
 
-Kernel Oracle 6.17 desta VM **não empacota nenhum módulo wireless/BT**
-(`find /lib/modules/$(uname -r) -name '*.ko*' -path '*wireless*'` vazio;
-btusb/btrtl/mt7601u/ath9k_htc ausentes). Implicações:
+Host com três kernels Oracle 6.17 instalados: o em execução (1018) não traz
+nenhum módulo wireless/BT; o instalado 1020 traz **194 módulos wireless**
+(`find /lib/modules/6.17.0-1020-oracle -path '*wireless*' -name '*.ko*'`),
+incluindo `rtl8xxxu.ko`, `mt7601u.ko`, `ath9k_htc.ko`, `btusb.ko`, `btrtl.ko`
+(caminhos verificados por find neste host). Implicações:
 
-1. Fixtures de teste devem carregar linhas de `modules.alias` sintéticas
+1. Fixtures de teste carregam linhas de `modules.alias` sintéticas
    derivadas destas fontes (não do host).
-2. "Kernel sem driver algum" é cenário real de Estado E que o produto deve
+2. O diagnóstico consulta sempre o tree do kernel **em execução** e sinaliza
+   divergência com kernels instalados pendentes de reboot.
+3. "Kernel sem driver algum" é cenário real de Estado E que o produto deve
    diagnosticar explicitamente, não exceção.

@@ -102,8 +102,18 @@ Mensagem de falha exata (`fw_main.c:903`):
 `"Direct firmware load for %s failed with error %d"` — padrão canônico para o
 detector do Estado C. `-2` = ENOENT (arquivo ausente).
 
-## 7. Verificação local (host)
+## 6. Verificação local (host)
 
-Kernel Oracle 6.17 da VM: 3.601 linhas de alias, **zero** drivers wireless/BT
-empacotados (ver docs/research/realtek.md §6). Toda fixture de modules.alias
-deste projeto deriva das fontes acima, nunca do host.
+Host com três kernels Oracle 6.17 instalados. O **em execução** (uname -r =
+6.17.0-1018-oracle) não empacota nenhum módulo wireless/BT. O instalado
+6.17.0-**1020**-oracle traz **194 módulos wireless** (verificado por find),
+incluindo mt7601u com aliases reais (`modinfo` contra esse tree funcionou).
+
+Implicações de produto:
+
+1. A ferramenta deve resolver `modules.alias` do kernel **em execução**
+   (`uname -r`), nunca "o mais novo instalado" — e detectar explicitamente o
+   cenário "novo kernel instalado, reboot pendente", onde driver/firmware já
+   existem no tree futuro mas não no ativo.
+2. Fixtures de teste derivam das fontes citadas aqui, não do host.
+3. "Kernel sem driver algum" permanece cenário válido de Estado E.
