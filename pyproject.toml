@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dongle-driver-rescue"
+version = "0.1.0"
+description = "Deterministic diagnostician and recovery tool for USB Wi-Fi/Bluetooth dongles"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "forg3" }]
+dependencies = []
+
+[project.scripts]
+dongle-rescue = "dongle_rescue.cli.main:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
