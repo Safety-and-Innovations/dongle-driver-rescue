@@ -97,10 +97,14 @@ class RealHost(Host):
         raise NotImplementedError("privileged op implemented in repair module")
 
 
-def firmware_exists(host: Host, rel_path: str) -> bool | None:
+def firmware_exists(
+    host: Host, rel_path: str, *, root: str = "/lib/firmware"
+) -> bool | None:
     """Check a validated firmware relative path under the firmware root.
 
     Symlink-safe per ADR 0002 S3: realpath must remain under the root.
+    Resolution goes through the Host abstraction so tests can inject fixture
+    roots; RealHost resolves exactly like the kernel's final fw_path entry.
     Returns None when existence cannot be determined.
     """
     from .types import require_firmware_path
@@ -109,12 +113,12 @@ def firmware_exists(host: Host, rel_path: str) -> bool | None:
         rel = require_firmware_path(rel_path)
     except ValueError:
         return False  # invalid by grammar -> treated as not present, flagged upstream
-    root = Path("/lib/firmware")
-    target = root / rel
+    base = root.rstrip("/")
+    target = f"{base}/{rel}"
     try:
-        real = os.path.realpath(target)
-    except OSError:
+        real = host.resolve_realpath(target)
+    except (HostError, OSError):
         return None
-    if os.path.commonpath([real, str(root)]) != str(root):
-        return False  # escapes root: refuse silently? No — caller records evidence.
-    return os.path.exists(real)
+    if os.path.commonpath([real, base]) != base:
+        return False  # escapes root: refuse; caller records evidence.
+    return host.exists(real)
