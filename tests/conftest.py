@@ -91,7 +91,7 @@ def make_device(
 ALIAS_MT7601_BOUND_SCENARIO = [
     "# aliases begin",
     "alias usb:v148Fp7601d*dc*dsc*dp*ic*isc*ip*in* mt7601u",
-    "alias usb:v148Fp760Ad** mt7601u",  # collision member 1
+    "alias usb:v148Fp760Ad*dc*dsc*dp*ic*isc*ip*in* mt7601u",  # collision member 1
     "alias usb:v148Fp760Ad*dc*dsc*dp*ic*isc*ip*in* mt76x0u",  # collision member 2
     "alias usb:v0CF3p9271d*dc*dsc*dp*ic*isc*ip*in* ath9k_htc",
     "alias pci:v000010ECd00008168sv*sd*bc*sc*i* r8169",
