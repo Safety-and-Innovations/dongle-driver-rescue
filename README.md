@@ -43,6 +43,22 @@ V1 under active development (Python 3.12, stdlib-only core).
 See [docs/SPEC.md](docs/SPEC.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 and [docs/adr/](docs/adr/) for design decisions with citations.
 
+### What is done / what is coming
+
+- ✅ Research base complete with embedded evidence:
+      [docs/research/](docs/research/) — kernel/firmware chains for the
+      MediaTek/Ralink/Atheros targets (`mediatek-atheros.md`: merge windows
+      pinned from git.kernel.org — mt76 core 4.16, mt76x0u 4.19, mt76x2u 4.20,
+      mt7921u 5.18; real ID collisions documented), Realtek
+      (`realtek.md`), firmware supply chain and Windows diagnostics.
+- ✅ USB enumeration core and typed models (`src/dongle_rescue/usb/`),
+      initial chipset knowledge base with per-entry confidence
+      (`src/dongle_rescue/data/chipsets.json`).
+- 🔜 Firmware resolver module (`dongle_rescue.firmware`) — in progress.
+- 🔜 Diagnosis engine for states B/C/D/E with JSON output,
+      full CLI (`identify|diagnose|repair --dry-run|verify|rollback|history|doctor`),
+      fixtures + failure injection, security review/red team pass.
+
 ## Development
 
 ```sh
