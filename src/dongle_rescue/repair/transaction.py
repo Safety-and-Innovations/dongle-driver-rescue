@@ -9,9 +9,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
-from ..types import TransactionRecord
+from ..types import TransactionRecord, require_module_name
+
+
+#: ``vid:pid`` em hex de 4 digitos, como o kernel reporta.
+_VID_PID = re.compile(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{4}")
 
 
 def _canonical(obj: object) -> str:
@@ -111,6 +116,14 @@ def plan_rollback(rec: TransactionRecord) -> list[dict]:
         vid_pid = rec.rollback_action.get("vid_pid")
         if not isinstance(driver, str) or not driver or not isinstance(vid_pid, str):
             raise ValueError("remove_new_id requires driver and vid_pid")
+        # Mesmo rigor que `remove_file` aplica ao caminho. Antes bastava ser
+        # string nao vazia: `driver="x; id"` passava, e o passo de rollback
+        # carregava isso para quem fosse executa-lo. O journal fica em disco e
+        # pode ser adulterado — e entrada nao confiavel como qualquer outra
+        # (ADR 0002 S6).
+        driver = require_module_name(driver)
+        if not _VID_PID.fullmatch(vid_pid):
+            raise ValueError(f"invalid vid:pid for remove_new_id: {vid_pid!r}")
         steps.append(
             {
                 "seq": 1,

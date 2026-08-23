@@ -65,7 +65,8 @@ and [docs/adr/](docs/adr/) for design decisions with citations.
 - ✅ Full CLI: `identify | diagnose | repair --dry-run | verify | rollback |
       history | report | doctor`, with JSON output.
 - ✅ Fixture tree, failure injection and byte-exact golden outputs.
-- 🔜 Security review / red-team pass.
+- ✅ Offensive security audit (S1–S7): 7 critical findings fixed, 45
+      regression tests — [docs/SECURITY-AUDIT-2026-08.md](docs/SECURITY-AUDIT-2026-08.md).
 - 🔜 Windows repair actions (V1 ships Windows read-only diagnostics).
 
 ## Development
