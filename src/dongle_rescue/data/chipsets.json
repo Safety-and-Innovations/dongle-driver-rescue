@@ -173,7 +173,8 @@
       "chipset": "RTL8812AU",
       "family": "realtek-wifi",
       "modules": [
-        "rtl8xxxu"
+        "rtl8xxxu",
+        "rtw88_8812au"
       ],
       "firmware": [
         "rtlwifi/rtl8812aefw.bin",
@@ -183,9 +184,9 @@
         "firmware-realtek",
         "linux-firmware"
       ],
-      "new_id_feasible": false,
-      "confidence": "HIGH_CONFIDENCE",
-      "notes": "No rtw88 USB entry for 8812AU in mainline table captured this session (rtw88_8822bu covers BU family only); repair via new_id unavailable.",
+      "new_id_feasible": true,
+      "confidence": "CONFIRMED",
+      "notes": "rtl8xxxu never claimed this chip; rtw88_8812au covers it since v6.13 (full Realtek PID set v6.14) and accepts new_id. Firmware rtlwifi/rtl8812aefw.bin.",
       "evidence": [
         {
           "source": "~/.research_realtek/WHENCE:3365-3366",
@@ -194,28 +195,65 @@
         {
           "source": "/tmp/dynid/rtw88_8822bu.c",
           "detail": "table = 8822B USB ids, not 8812AU"
+        },
+        {
+          "source": "linux-master drivers/net/wireless/realtek/rtw88/rtw8812au.c:12,14,16,18",
+          "detail": "rtw_8812au_id_table claims 0x8812/0x881a/0x881b/0x881c (VID 0x0bda per rtw88/usb.h:47); verbatim from torvalds master + stable v6.14.10"
+        },
+        {
+          "source": "linux-master rtl8xxxu/core.c:7997-8282",
+          "detail": "dev_table has NO 8812AU IDs; .no_dynamic_id=1 at :8289 excludes rtl8xxxu from new_id"
+        },
+        {
+          "source": "commits 8f82bb2cfaf7, 1ee6ff9ae3c1",
+          "detail": "rtw88_8812au added v6.13; full Realtek PID set since v6.14"
         }
-      ]
+      ],
+      "usb_ids": [
+        "0bda:8812",
+        "0bda:881a",
+        "0bda:881b",
+        "0bda:881c"
+      ],
+      "new_id_modules": [
+        "rtw88_8812au"
+      ],
+      "preferred_module": "rtw88_8812au"
     },
     {
       "chipset": "RTL8814AU",
       "family": "realtek-wifi",
       "modules": [
-        "rtl8xxxu"
+        "rtl8xxxu",
+        "rtw88_8814au"
       ],
       "firmware": [],
       "fw_package_debian": [
         "firmware-realtek",
         "linux-firmware"
       ],
-      "new_id_feasible": false,
-      "confidence": "PROBABLE",
-      "notes": "Firmware file for 8814 not located in WHENCE this session; module claim via rtl8xxxu dev_table.",
+      "new_id_feasible": true,
+      "confidence": "CONFIRMED",
+      "notes": "No earlier in-tree claimant existed; rtw88_8814au added for kernel v6.15 and accepts new_id.",
       "evidence": [
         {
           "source": "grep WHENCE",
           "detail": "no rtl8814 firmware File: entry found in captured WHENCE slice"
+        },
+        {
+          "source": "linux-master drivers/net/wireless/realtek/rtw88/rtw8814au.c:12",
+          "detail": "rtw_8814au_id_table claims 0x8813 (VID 0x0bda); verbatim; also stable v6.15.7"
+        },
+        {
+          "source": "commit bad060e8a425",
+          "detail": "driver added for kernel v6.15; no prior in-tree claimant"
         }
+      ],
+      "usb_ids": [
+        "0bda:8813"
+      ],
+      "new_id_modules": [
+        "rtw88_8814au"
       ]
     },
     {

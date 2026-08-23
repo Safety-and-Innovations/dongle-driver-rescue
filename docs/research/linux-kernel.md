@@ -79,10 +79,47 @@ de kernel porque o modalias não muda com o kernel.
 Sintaxe: `blacklist <module>` impede o alias resolution automático;
 `blacklist <module>` em `/etc/modprobe.d/*.conf`; precedência: último arquivo
 em ordem lexicográfica vence em conflito de opções; `install <mod> /bin/false`
-bloqueia totalmente. Secure Boot: módulo não assinado gera
-"module verification failed" / "Lockdown: ..." no dmesg (fonte:
-`lockdown_lsm.c` e `module-signing.rst` no acervo; mensagem exata a validar
-na implementação contra o kernel-alvo).
+bloqueia totalmente.
+
+### Secure Boot — mensagens confirmadas no dmesg
+
+Quando Secure Boot está ativo e um módulo sem assinatura é carregado, o kernel
+emite **uma ou mais** das seguintes linhas (fontes: `security/lockdown/lockdown.c`,
+`kernel/module/signing.c`, `kernel/module/main.c`; strings inalteradas entre
+5.15 e 6.17):
+
+1. **Travamento por lockdown** (`CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT=y` — padrão
+   em Ubuntu/Debian; ausente em upstream vanilla):
+   ```
+   Lockdown: <comm>: unsigned module loading is restricted; see man kernel_lockdown.7
+   ```
+   - Arquivo: `security/lockdown/lockdown.c:66-68`
+   - v5.15 usa `pr_notice`; v6.1+ usa `pr_notice_ratelimited`.
+   - Textos de `lockdown_reasons[]` em `security/security.c:62`:
+     `[LOCKDOWN_MODULE_SIGNATURE] = "unsigned module loading"`.
+
+2. **Rejeição explícita** (`CONFIG_MODULE_SIG_FORCE=y` ou `module.sig_enforce=1`):
+   ```
+   Loading of unsigned module is rejected
+   ```
+   (ou `Loading of module with unavailable key is rejected`,
+   `Loading of module with unsupported crypto is rejected`).
+   - Arquivo: `kernel/module/signing.c:120`.
+
+3. **Taint do kernel** (sig_enforce=0, módulo carregado mesmo assim):
+   ```
+   <modname>: module verification failed: signature and/or required key missing - tainting kernel
+   ```
+   - Arquivo: `kernel/module/main.c` (linha varia: 2747 em v6.1, 2046 em v6.6,
+     2064 em v6.12, 2547 em v6.17). Usa `pr_notice_once`.
+
+Indicadores de que Secure Boot está ativo na inicialização:
+
+- **upstream vanilla**: `Secure boot enabled` (`arch/x86/kernel/setup.c:1163` em v6.17)
+- **Ubuntu/Debian** (pr_fmt local): `secureboot: Secure boot enabled`
+- **lockdown ativado por SB**: `Kernel is locked down from EFI Secure Boot mode; see man kernel_lockdown.7`
+
+Fixture atualizada em `tests/fixtures/__init__.py:DMESG_SECURE_BOOT_REJECTION`.
 
 ## 6. Firmware — ordem real de busca e mensagem de falha (CONFIRMED)
 

@@ -114,10 +114,15 @@ DMESG_DESCRIPTOR_ERROR = [
     "[    3.610000] usb 1-2: device descriptor read/all, error -71",
 ]
 
-# Secure Boot rejection shape per linux-kernel.md §5 (module signing lockdown).
+# Secure Boot rejection shape — messages confirmed from upstream source
+# (security/lockdown/lockdown.c, kernel/module/signing.c, kernel/module/main.c).
+# Valid across kernels 5.15..6.17; string literals unchanged.
 DMESG_SECURE_BOOT_REJECTION = [
-    "[   12.0] Lockdown: modprobe: unsigned module loading is restricted by "
-    "secure boot",
+    # Lockdown path (CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT=y, distro default e.g. Ubuntu/Debian):
+    "[   12.0] Lockdown: modprobe: unsigned module loading is restricted; see man kernel_lockdown.7",
+    # Taint path (MODULE_SIG_FORCE=n or sig_enforce=0):
     "[   12.0] rtl88xxau: module verification failed: signature and/or "
     "required key missing - tainting kernel",
+    # Enforcement path (MODULE_SIG_FORCE=y):
+    "[   12.0] Loading of unsigned module is rejected",
 ]
