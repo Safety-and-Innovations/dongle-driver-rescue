@@ -1,0 +1,1 @@
+{"after_state":{"existed":true},"before_state":{"existed":false,"path":"/etc/modprobe.d/ddr-0bda-8811.conf"},"change":{"op":"create_modprobe_alias"},"rollback_action":{"op":"remove_file","path":"/etc/modprobe.d/ddr-0bda-8811.conf"},"transaction_id":"c39bf0dcb02f5906840a94edd0bf79552ec6dfe3026ef8703da067ef8370d36a"}

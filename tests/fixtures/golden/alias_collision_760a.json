@@ -1,0 +1,1 @@
+[{"module":"mt7601u","pattern":"usb:v148Fp760Ad*dc*dsc*dp*ic*isc*ip*in*","raw":"alias usb:v148Fp760Ad*dc*dsc*dp*ic*isc*ip*in* mt7601u"},{"module":"mt76x0u","pattern":"usb:v148Fp760Ad*dc*dsc*dp*ic*isc*ip*in*","raw":"alias usb:v148Fp760Ad*dc*dsc*dp*ic*isc*ip*in* mt76x0u"}]

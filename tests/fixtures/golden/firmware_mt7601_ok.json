@@ -1,0 +1,1 @@
+{"evidence":[{"detail":"mt7601u.bin present (raw)","source":"/lib/firmware/mt7601u.bin"}],"found_form":"raw","installed":true,"mapping":{"chipset":"MT7601U","confidence":"CONFIRMED","packages":["firmware-mediatek","linux-firmware"]},"normalized_path":"mt7601u.bin"}

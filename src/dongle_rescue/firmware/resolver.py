@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..host import Host
+from ..host import Host, HostError
 from ..types import Confidence, Evidence, RecommendedAction, require_firmware_path
 
 FIRMWARE_ROOT = "/lib/firmware"
@@ -83,11 +83,19 @@ class FirmwareStatus:
     mapping: "PackageMapping | None" = None
 
 
-def _exists_under_root(host: Host, full: str, root: str) -> bool:
-    """exists() with symlink containment (ADR 0002 S3)."""
-    if not host.exists(full):
+def _exists_under_root(host: Host, full: str, root: str) -> bool | None:
+    """exists() with symlink containment (ADR 0002 S3).
+
+    Returns None when the host itself fails (SPEC §22: injected I/O failure =>
+    indeterminate, not absent). Containment violations count as absent.
+    """
+    try:
+        present = host.exists(full)
+        real = host.resolve_realpath(full) if present else ""
+    except (HostError, OSError):
+        return None
+    if not present:
         return False
-    real = host.resolve_realpath(full)
     return real.startswith(root.rstrip("/") + "/")
 
 
@@ -117,10 +125,12 @@ def check_firmware_presence(
         )
     canon = require_firmware_path(rel_path)
     base = root.rstrip("/")
+    indeterminate = False
     for suffix, form in [("", "raw")] + [(s, s) for s in _COMPRESSED_FORMS]:
         cand = f"{canon}{suffix}"
         full = f"{base}/{cand}"
-        if _exists_under_root(host, full, base):
+        state = _exists_under_root(host, full, base)
+        if state is True:
             return FirmwareStatus(
                 module=module,
                 normalized_path=canon,
@@ -128,6 +138,22 @@ def check_firmware_presence(
                 found_form=form,
                 evidence=(Evidence(source=full, detail=f"{cand} present ({form})"),),
             )
+        if state is None:
+            indeterminate = True
+    if indeterminate:
+        # SPEC §22: injected I/O failure -> defined, explainable unknown.
+        return FirmwareStatus(
+            module=module,
+            normalized_path=canon,
+            installed=None,
+            found_form=None,
+            evidence=(
+                Evidence(
+                    source=f"{base}/{canon}",
+                    detail="presence could not be determined: host access failed",
+                ),
+            ),
+        )
     return FirmwareStatus(
         module=module,
         normalized_path=canon,
