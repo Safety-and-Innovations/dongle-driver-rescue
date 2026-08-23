@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dongle_rescue.host import Host, HostError
 from dongle_rescue.linux.log_access import (
+    plan_kernel_log_access,
     DMESG_ARGV,
     JOURNALCTL_ARGV,
     reboot_pending,
@@ -91,3 +92,76 @@ def test_non_comparable_release_strings_never_claim_newer():
     host = MapHost(dirs={"/lib/modules": ["weird-custom-build"]})
     pending, _ = reboot_pending(host, running_release="6.17.0-1018-oracle")
     assert pending is False  # conservative: no false positive
+
+
+# ---------------------------------------------------------------------------
+# plan_kernel_log_access: era `collect_kernel_log`, que prometia coletar o log
+# e devolvia None em todos os caminhos. Nunca foi chamada por produção nem por
+# teste — a cobertura mostrava as linhas sem execução alguma. Agora o `doctor`
+# a usa, e estes testes fixam o contrato.
+# ---------------------------------------------------------------------------
+
+
+class _HostFalso:
+    """Host mínimo: decide se journalctl existe e registra o que perguntaram."""
+
+    def __init__(self, com_journalctl: bool):
+        self.com_journalctl = com_journalctl
+        self.consultados: list[str] = []
+
+    def exists(self, path):
+        self.consultados.append(path)
+        return self.com_journalctl and path == "/usr/bin/journalctl"
+
+    def read(self, path):
+        raise AssertionError("o planejador nao deve LER nada, so planejar")
+
+    def listdir(self, path):
+        raise AssertionError("o planejador nao deve listar nada")
+
+    def resolve_realpath(self, path):
+        return path
+
+
+def test_plano_usa_journalctl_quando_disponivel():
+    host = _HostFalso(com_journalctl=True)
+
+    tem, plano = plan_kernel_log_access(host, release="6.17.0-1018-oracle")
+
+    assert tem is True
+    assert "journalctl" in plano
+    assert "6.17.0-1018-oracle" in plano
+    # o fallback continua descrito, com o sintoma exato da negativa
+    assert "dmesg" in plano
+    assert "Operation not permitted" in plano
+
+
+def test_plano_cai_para_dmesg_sem_journalctl():
+    host = _HostFalso(com_journalctl=False)
+
+    tem, plano = plan_kernel_log_access(host, release="6.17.0-1018-oracle")
+
+    assert tem is False
+    assert "dmesg" in plano
+    assert "nao encontrado" in plano or "não encontrado" in plano
+
+
+def test_planejador_nao_executa_nem_le_nada():
+    """SPEC 37: o nucleo puro nao cria processos nem le arquivos aqui."""
+    host = _HostFalso(com_journalctl=True)
+
+    plan_kernel_log_access(host, release="6.17.0-1018-oracle")
+
+    # se tivesse lido algo, o _HostFalso teria levantado AssertionError
+    assert host.consultados == ["/usr/bin/journalctl"]
+
+
+def test_plano_tolera_host_que_falha():
+    class HostQuebrado(_HostFalso):
+        def exists(self, path):
+            raise OSError("sistema de arquivos indisponivel")
+
+    tem, plano = plan_kernel_log_access(HostQuebrado(True), release="6.1.0")
+
+    assert tem is False
+    assert "dmesg" in plano

@@ -52,20 +52,53 @@ and [docs/adr/](docs/adr/) for design decisions with citations.
       mt7921u 5.18; real ID collisions documented), Realtek
       (`realtek.md`), firmware supply chain and Windows diagnostics.
 - ✅ USB enumeration core and typed models (`src/dongle_rescue/usb/`),
-      initial chipset knowledge base with per-entry confidence
+      chipset knowledge base with per-entry confidence
       (`src/dongle_rescue/data/chipsets.json`).
-- 🔜 Firmware resolver module (`dongle_rescue.firmware`) — in progress.
-- 🔜 Diagnosis engine for states B/C/D/E with JSON output,
-      full CLI (`identify|diagnose|repair --dry-run|verify|rollback|history|doctor`),
-      fixtures + failure injection, security review/red team pass.
+- ✅ Firmware resolver (`dongle_rescue.firmware`): dmesg parsing, presence
+      check, package mapping, display-only install commands.
+- ✅ Diagnosis engine for states A–E (`dongle_rescue.diagnostics.classifier`)
+      and chipset resolution (`dongle_rescue.identification`).
+- ✅ Repair planner + append-only transaction journal with content-hash ids
+      and a pure rollback planner (`dongle_rescue.repair`).
+- ✅ Functional verification layer (`dongle_rescue.verification`): success is
+      *hardware functional*, never *installation completed*.
+- ✅ Full CLI: `identify | diagnose | repair --dry-run | verify | rollback |
+      history | report | doctor`, with JSON output.
+- ✅ Fixture tree, failure injection and byte-exact golden outputs.
+- 🔜 Security review / red-team pass.
+- 🔜 Windows repair actions (V1 ships Windows read-only diagnostics).
 
 ## Development
+
+> ### ⚠️ Clone and run this repository on Linux (or WSL), never on Windows
+>
+> The fixture tree reproduces the kernel's sysfs layout, which contains
+> directories such as `sys/bus/usb/devices/1-3:1.0`. **The colon is a reserved
+> character on NTFS**, so those paths cannot exist on Windows. Git checks them
+> out under mangled 8.3 names (`1HIVA8~9.0`), reports the real files as
+> *deleted* and the mangled ones as *untracked*.
+>
+> A `git add -A` in that state **deletes the fixtures from the repository** and
+> commits the mangled directories in their place. If you already have a broken
+> Windows checkout, discard it and clone again inside WSL — do not try to fix
+> it in place.
+>
+> `tests/conftest.py` fails fast with an explicit message when it detects this,
+> instead of producing dozens of confusing errors.
 
 ```sh
 uv venv --python python3.12 .venv
 uv pip install --python .venv/bin/python pytest pytest-cov
 PYTHONPATH=src .venv/bin/python -m pytest tests/
+PYTHONPATH=src .venv/bin/python -m dongle_rescue.cli.main doctor
 PYTHONPATH=src .venv/bin/python -m dongle_rescue.cli.main diagnose --json
+```
+
+Without `uv`, the standard library works just as well:
+
+```sh
+python3 -m venv .venv
+./.venv/bin/python -m pip install pytest pytest-cov
 ```
 
 ## License

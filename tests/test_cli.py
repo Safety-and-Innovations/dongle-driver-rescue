@@ -234,3 +234,25 @@ def test_no_network_flag_propagates_to_recommendations(tmp_path):
     assert code == 0
     # mt7601 firmware present => no network-dependent action anyway
     assert "NO_ACTION_REQUIRED" in out
+
+
+def test_doctor_reporta_plano_de_log_e_reboot(fake_host):
+    """O `doctor` passou a expor o acesso ao log do kernel.
+
+    O planejador existia mas nao era chamado por ninguem; o doctor omitia
+    justamente a informacao de que precisa quem vai diagnosticar estado C.
+    """
+    code, out = run(["doctor"], host=fake_host)
+
+    assert code == 0
+    assert "journalctl available:" in out
+    assert "kernel log plan:" in out
+    assert "reboot pending:" in out
+
+
+def test_doctor_sem_host_nao_quebra():
+    """Sem host injetado o doctor ainda responde o que nao depende da maquina."""
+    code, out = run(["doctor"])
+
+    assert code == 0
+    assert "kernel release:" in out

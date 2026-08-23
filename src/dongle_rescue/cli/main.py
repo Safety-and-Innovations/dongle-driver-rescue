@@ -24,6 +24,8 @@ from ..firmware.resolver import (
 )
 from ..identification.resolver import resolve_device
 from ..linux.modules_alias import match_with_lines, read_alias_lines
+from ..host import RealHost
+from ..linux.log_access import plan_kernel_log_access, reboot_pending
 from ..repair.planner import plan_state_b
 from ..repair.transaction import Journal, plan_rollback
 from ..types import DiagnosisState
@@ -397,12 +399,47 @@ def _cmd_doctor(host, kb):
     lines.append(f"package manager detected: {', '.join(mgrs) if mgrs else 'none'}")
     lines.append(f"knowledge base entries: {len(kb.get('chipsets', []))}")
     lines.append("network policy: offline by default (--no-network respected)")
+
+    # Acesso ao log do kernel: o `doctor` existe para dizer o que dá para
+    # inspecionar nesta máquina, e ler o dmesg é parte central do diagnóstico
+    # de estado C. O planejador existia mas não era chamado por ninguém.
+    if host is not None:
+        try:
+            tem_journalctl, plano = plan_kernel_log_access(host, release)
+            lines.append(f"journalctl available: {'yes' if tem_journalctl else 'NO'}")
+            lines.append(f"kernel log plan: {plano}")
+        except Exception as exc:  # nunca derruba o doctor
+            lines.append(f"kernel log plan: unavailable ({exc})")
+
+        pendente, motivo = reboot_pending(host, release)
+        estado = {True: "yes", False: "no", None: "unknown"}[pendente]
+        lines.append(f"reboot pending: {estado} ({motivo})")
+
     return EXIT_OK, "\n".join(lines) + "\n"
 
 
 def main() -> int:  # console_scripts entry point
     import sys
 
-    code, text = run(sys.argv[1:])
+    # O HOST REAL entra aqui.
+    #
+    # `run()` aceita host=None porque e a costura de injecao usada pelos testes.
+    # Mas main() tambem chamava run() SEM host, entao em producao host era
+    # sempre None: `enumerate_usb_devices(host) if host else []` devolvia lista
+    # vazia, `verify` respondia "no host available" e o `doctor` pulava tudo que
+    # depende da maquina. Ou seja, a ferramenta nunca conseguia diagnosticar um
+    # dongle de verdade pela linha de comando — so pelos testes, que injetam um
+    # host falso. RealHost ja existia (host.py) e nunca era instanciado.
+    code, text = run(sys.argv[1:], host=RealHost())
     print(text, end="")
     return code
+
+
+# `python -m dongle_rescue.cli.main <cmd>` precisa deste guard.
+#
+# Sem ele o modulo era apenas importado: definia tudo, nao chamava nada e saia
+# com codigo 0 SEM IMPRIMIR NADA. O entry point de console (dongle-rescue,
+# declarado no pyproject) funcionava, mas a invocacao que o proprio README
+# documenta rodava em silencio.
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
