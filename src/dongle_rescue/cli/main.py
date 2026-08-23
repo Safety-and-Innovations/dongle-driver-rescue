@@ -63,7 +63,7 @@ def run(
         jp = _opt_value(opts, "--journal") or journal_path
         return _cmd_rollback(rest, jp)
     if cmd == "verify":
-        return _cmd_verify_placeholder()
+        return _cmd_verify(opts, host, kb)
     if cmd == "report":
         return _cmd_diagnose(opts, host, kb)  # same content; reporting layer later
     if cmd == "doctor":
@@ -346,6 +346,32 @@ def _cmd_rollback(rest: list[str], journal_path: str | None):
         lines.append(f"  step {s['seq']}: {s['action']} {s.get('path', s.get('vid_pid', ''))}"
                      f"  if_present={s.get('if_present')}")
     lines.append("Applying twice is a declared no-op (idempotent, SPEC §24).")
+    return EXIT_OK, "\n".join(lines) + "\n"
+
+
+def _cmd_verify(opts, host, kb):
+    """SPEC §25: functional verification after a repair (offline checks)."""
+    if host is None:
+        return EXIT_OK, "verify: no host available\n"
+    dev_spec = _opt_value(opts, "--device")
+    device = _pick_device(host, dev_spec)
+    if device is None:
+        return EXIT_UNKNOWN, "verify: no device present\n"
+    from ..verification.checker import verify_device
+
+    iface = device.sysfs_path + ":1.0"
+    kind = "wifi"  # BT detection via interface class lands with live probing
+    rep = verify_device(host, kind=kind, sysfs_iface=iface, dmesg_lines=[])
+    lines = [f"Verification ({kind}):", f"  verdict: {rep.verdict}"]
+    for c in rep.checks:
+        state = {True: "PASS", False: "FAIL", None: "UNKNOWN"}[c.passed]
+        lines.append(f"  {c.name:22} {state:7} {c.detail}")
+    if rep.verdict == "HARDWARE_FUNCTIONAL":
+        lines.append("RESULT: HARDWARE FUNCTIONAL")
+    elif rep.verdict == "UNKNOWN":
+        lines.append("RESULT: UNKNOWN — host reads failed; inspect manually")
+    else:
+        lines.append("RESULT: NOT FUNCTIONAL — see failed checks above")
     return EXIT_OK, "\n".join(lines) + "\n"
 
 

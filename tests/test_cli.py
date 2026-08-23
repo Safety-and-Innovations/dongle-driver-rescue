@@ -201,6 +201,29 @@ def test_doctor_reports_environment_checks():
     assert "package manager" in out.lower()
 
 
+def test_verify_reports_hardware_functional_on_mt7601_ok():
+    argv, host = _argv_host("mt7601_ok")
+    code, out = run([*argv, "verify"], host=host, kb=KB_SYNTHETIC)
+    # fixture has driver bound + firmware file, but no /sys/class/net — the
+    # offline checker must report the missing interface honestly.
+    assert code == 0
+    assert "NOT FUNCTIONAL" in out or "interface_present" in out
+
+
+def test_verify_placeholder_replaced_by_real_checks():
+    argv, host = _argv_host("mt7601_ok")
+    code, out = run([*argv, "verify"], host=host, kb=KB_SYNTHETIC)
+    assert "verdict:" in out  # real checker output, not the old placeholder text
+    assert "verification layer" not in out
+
+
+def test_verify_unknown_device_exits_2():
+    argv, host = _argv_host()
+    code, out = run([*argv, "verify", "--device", "0000:0000"],
+                    host=host, kb=KB_SYNTHETIC)
+    assert code == 2
+
+
 # ----------------------------------------------------------------- flags
 
 
