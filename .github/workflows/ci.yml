@@ -1,0 +1,97 @@
+name: CI
+
+# Roda a cada push e pull request. Cada job trava a volta de um defeito que ja
+# chegou ao repositorio — nao e verificacao generica.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Testes + cobertura (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Dependencias de teste
+        run: python -m pip install --quiet pytest pytest-cov
+
+      # A arvore de fixtures reproduz o sysfs e contem diretorios como
+      # `1-3:1.0`. Dois-pontos e reservado no NTFS: um checkout Windows grava
+      # nomes 8.3 mutilados e marca os arquivos reais como deletados — e um
+      # `git add -A` nesse estado APAGA as fixtures do repositorio. Este passo
+      # pega isso antes de virar prejuizo.
+      - name: Arvore de fixtures intacta
+        run: |
+          faltando=0
+          for d in \
+            "tests/fixtures/tree/mt7601_ok/sys/bus/usb/devices/1-3:1.0" \
+            "tests/fixtures/tree/rtl8811cu_unbound/sys/bus/usb/devices/1-2:1.0" \
+            "tests/fixtures/tree/collision_760a/sys/bus/usb/devices/1-4:1.0" ; do
+              if [ -d "$d" ]; then echo "OK      $d"
+              else echo "FALTA   $d"; faltando=$((faltando+1)); fi
+          done
+          if [ "$faltando" -gt 0 ]; then
+            echo "::error::fixtures com ':' ausentes — provavel commit vindo de checkout Windows"
+            exit 1
+          fi
+          if git ls-files | grep -qE '~[A-Z0-9]{2}\.[0-9]'; then
+            echo "::error::nomes 8.3 mutilados versionados (checkout Windows quebrado)"
+            git ls-files | grep -E '~[A-Z0-9]{2}\.[0-9]'
+            exit 1
+          fi
+
+      - name: Testes com gate de cobertura
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest tests/ -q \
+            --cov=src/dongle_rescue \
+            --cov-report=term-missing \
+            --cov-fail-under=85
+
+      # O CLI ja esteve COMPLETAMENTE inoperante enquanto os 186 testes
+      # passavam: main() nunca injetava o host real e faltava o guard
+      # __main__, entao `python -m ...` saia com codigo 0 sem imprimir NADA.
+      # Nenhum teste unitario pegava isso, porque todos injetam host falso.
+      # Este smoke exercita o ponto de entrada de producao.
+      - name: Smoke do CLI (ponto de entrada real)
+        env:
+          PYTHONPATH: src
+        run: |
+          saida=$(python -m dongle_rescue.cli.main doctor)
+          echo "$saida"
+          if [ -z "$saida" ]; then
+            echo "::error::`python -m` nao imprimiu nada — guard __main__ ausente?"
+            exit 1
+          fi
+          for esperado in "kernel release:" "journalctl available:" "reboot pending:" ; do
+            echo "$saida" | grep -q "$esperado" || {
+              echo "::error::doctor nao reportou '$esperado' — host real nao injetado?"
+              exit 1; }
+          done
+          echo "smoke OK: o CLI roda e usa o host real"
+
+  segredos:
+    name: Varredura de segredos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historico inteiro, nao so o ultimo commit
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
