@@ -11,216 +11,572 @@
     {
       "chipset": "RTL8188EU",
       "family": "realtek-wifi",
-      "modules": ["rtl8xxxu"],
-      "firmware": ["rtlwifi/rtl8188eufw.bin"],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "modules": [
+        "rtl8xxxu"
+      ],
+      "firmware": [
+        "rtlwifi/rtl8188eufw.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": false,
       "confidence": "HIGH_CONFIDENCE",
       "notes": "r8188eu removed from mainline (staging path 404 on master); rtl8xxxu covers it and sets no_dynamic_id=1.",
       "evidence": [
-        {"source": "~/.research_realtek/WHENCE:3521", "detail": "File: rtlwifi/rtl8188eufw.bin"},
-        {"source": "/tmp/dynid (torvalds master)", "detail": "drivers/staging/r8188eu/* -> HTTP 404 (removed)"},
-        {"source": "~/.research_realtek/drivers_net_wireless_realtek_rtl8xxxu_core.c:8289", "detail": ".no_dynamic_id = 1"}
+        {
+          "source": "~/.research_realtek/WHENCE:3521",
+          "detail": "File: rtlwifi/rtl8188eufw.bin"
+        },
+        {
+          "source": "/tmp/dynid (torvalds master)",
+          "detail": "drivers/staging/r8188eu/* -> HTTP 404 (removed)"
+        },
+        {
+          "source": "~/.research_realtek/drivers_net_wireless_realtek_rtl8xxxu_core.c:8289",
+          "detail": ".no_dynamic_id = 1"
+        },
+        {
+          "source": "~/.research_realtek/drivers_net_wireless_realtek_rtl8xxxu_core.c:8022-8043 (dev_table)",
+          "detail": "usb_ids ['07b8:8179', '0bda:0179', '0bda:8179'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "07b8:8179",
+        "0bda:0179",
+        "0bda:8179"
       ]
     },
     {
       "chipset": "RTL8192EU",
       "family": "realtek-wifi",
-      "modules": ["rtl8xxxu"],
+      "modules": [
+        "rtl8xxxu"
+      ],
       "firmware": [],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": false,
       "confidence": "HIGH_CONFIDENCE",
       "notes": "Covered by rtl8xxxu dev_table (0x818c, 2357:0107, 2019:ab33, 2001:3312, ...); no dedicated firmware file found in WHENCE for this variant.",
       "evidence": [
-        {"source": "~/.research_realtek/drivers_net_wireless_realtek_rtl8xxxu_core.c", "detail": "USB_DEVICE_AND_INTERFACE_INFO(0x2357,0x0107,...)->rtl8192eu_fops"}
+        {
+          "source": "~/.research_realtek/drivers_net_wireless_realtek_rtl8xxxu_core.c",
+          "detail": "USB_DEVICE_AND_INTERFACE_INFO(0x2357,0x0107,...)->rtl8192eu_fops"
+        },
+        {
+          "source": "~/.research_realtek/drivers_net_wireless_realtek_rtl8xxxu_core.c:8004 (dev_table)",
+          "detail": "usb_ids ['0bda:818b'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "0bda:818b"
       ]
     },
     {
       "chipset": "RTL8811CU",
       "family": "realtek-wifi",
-      "modules": ["rtl8xxxu", "rtw88_8821cu"],
+      "modules": [
+        "rtl8xxxu",
+        "rtw88_8821cu"
+      ],
       "preferred_module": "rtw_8821cu",
-      "firmware": ["rtlwifi/rtl8821aefw.bin", "rtlwifi/rtl8821aefw_wowlan.bin"],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "firmware": [
+        "rtlwifi/rtl8821aefw.bin",
+        "rtlwifi/rtl8821aefw_wowlan.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["rtw88_8821cu"],
+      "new_id_modules": [
+        "rtw88_8821cu"
+      ],
       "confidence": "HIGH_CONFIDENCE",
       "notes": "rtw_8821cu driver struct has no no_dynamic_id flag (rtw8821cu.c:52-57) => accepts new_id. rtw88 table includes 0bda:8811 (rtw8821cu.c:16). rtl8xxxu also claims the family but rejects dynamic ids.",
       "evidence": [
-        {"source": "~/.research_realtek/WHENCE:3375-3378", "detail": "rtl8821aefw.bin + wowlan + _29 variants"},
-        {"source": "/tmp/dynid/rtw88_8821cu.c:16,52-57", "detail": "USB_DEVICE(0x...8811) present; driver struct clean"}
+        {
+          "source": "~/.research_realtek/WHENCE:3375-3378",
+          "detail": "rtl8821aefw.bin + wowlan + _29 variants"
+        },
+        {
+          "source": "/tmp/dynid/rtw88_8821cu.c:16,52-57",
+          "detail": "USB_DEVICE(0x...8811) present; driver struct clean"
+        },
+        {
+          "source": "/tmp/dynid/rtw88_8821cu.c (id_table verbatim)",
+          "detail": "usb_ids ['0bda:2006', '0bda:8731', '0bda:8811', '0bda:b820', '0bda:b82b', '0bda:c80c', '0bda:c811', '0bda:c820', '0bda:c821', '0bda:c82a'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "0bda:2006",
+        "0bda:8731",
+        "0bda:8811",
+        "0bda:b820",
+        "0bda:b82b",
+        "0bda:c80c",
+        "0bda:c811",
+        "0bda:c820",
+        "0bda:c821",
+        "0bda:c82a"
       ]
     },
     {
       "chipset": "RTL8821CU",
       "family": "realtek-wifi",
-      "modules": ["rtl8xxxu", "rtw88_8821cu"],
+      "modules": [
+        "rtl8xxxu",
+        "rtw88_8821cu"
+      ],
       "preferred_module": "rtw_8821cu",
-      "firmware": ["rtlwifi/rtl8821aefw.bin", "rtlwifi/rtl8821aefw_wowlan.bin"],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "firmware": [
+        "rtlwifi/rtl8821aefw.bin",
+        "rtlwifi/rtl8821aefw_wowlan.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["rtw88_8821cu"],
+      "new_id_modules": [
+        "rtw88_8821cu"
+      ],
       "confidence": "HIGH_CONFIDENCE",
       "evidence": [
-        {"source": "/tmp/dynid/rtw88_8821cu.c", "detail": "same driver family as RTL8811CU"}
+        {
+          "source": "/tmp/dynid/rtw88_8821cu.c",
+          "detail": "same driver family as RTL8811CU"
+        },
+        {
+          "source": "/tmp/dynid/rtw88_8821cu.c (same driver family)",
+          "detail": "usb_ids ['0bda:2006', '0bda:8731', '0bda:8811', '0bda:b820', '0bda:b82b', '0bda:c80c', '0bda:c811', '0bda:c820', '0bda:c821', '0bda:c82a'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "0bda:2006",
+        "0bda:8731",
+        "0bda:8811",
+        "0bda:b820",
+        "0bda:b82b",
+        "0bda:c80c",
+        "0bda:c811",
+        "0bda:c820",
+        "0bda:c821",
+        "0bda:c82a"
       ]
     },
     {
       "chipset": "RTL8812AU",
       "family": "realtek-wifi",
-      "modules": ["rtl8xxxu"],
-      "firmware": ["rtlwifi/rtl8812aefw.bin", "rtlwifi/rtl8812aefw_wowlan.bin"],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "modules": [
+        "rtl8xxxu"
+      ],
+      "firmware": [
+        "rtlwifi/rtl8812aefw.bin",
+        "rtlwifi/rtl8812aefw_wowlan.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": false,
       "confidence": "HIGH_CONFIDENCE",
       "notes": "No rtw88 USB entry for 8812AU in mainline table captured this session (rtw88_8822bu covers BU family only); repair via new_id unavailable.",
       "evidence": [
-        {"source": "~/.research_realtek/WHENCE:3365-3366", "detail": "rtl8812aefw.bin + wowlan"},
-        {"source": "/tmp/dynid/rtw88_8822bu.c", "detail": "table = 8822B USB ids, not 8812AU"}
+        {
+          "source": "~/.research_realtek/WHENCE:3365-3366",
+          "detail": "rtl8812aefw.bin + wowlan"
+        },
+        {
+          "source": "/tmp/dynid/rtw88_8822bu.c",
+          "detail": "table = 8822B USB ids, not 8812AU"
+        }
       ]
     },
     {
       "chipset": "RTL8814AU",
       "family": "realtek-wifi",
-      "modules": ["rtl8xxxu"],
+      "modules": [
+        "rtl8xxxu"
+      ],
       "firmware": [],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": false,
       "confidence": "PROBABLE",
       "notes": "Firmware file for 8814 not located in WHENCE this session; module claim via rtl8xxxu dev_table.",
       "evidence": [
-        {"source": "grep WHENCE", "detail": "no rtl8814 firmware File: entry found in captured WHENCE slice"}
+        {
+          "source": "grep WHENCE",
+          "detail": "no rtl8814 firmware File: entry found in captured WHENCE slice"
+        }
       ]
     },
     {
       "chipset": "RTL8192CU",
       "family": "realtek-wifi-legacy",
-      "modules": ["rtl8192cu"],
-      "firmware": ["rtlwifi/rtl8192cufw.bin", "rtlwifi/rtl8192cufw_A.bin", "rtlwifi/rtl8192cufw_B.bin", "rtlwifi/rtl8192cufw_TMSC.bin"],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "modules": [
+        "rtl8192cu"
+      ],
+      "firmware": [
+        "rtlwifi/rtl8192cufw.bin",
+        "rtlwifi/rtl8192cufw_A.bin",
+        "rtlwifi/rtl8192cufw_B.bin",
+        "rtlwifi/rtl8192cufw_TMSC.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["rtl8192cu"],
+      "new_id_modules": [
+        "rtl8192cu"
+      ],
       "confidence": "CONFIRMED",
       "notes": "Silicon cuts: _A (UMC A-cut), _B (UMC B-cut), _TMSC (TSMC); driver selects by IS_VENDOR_UMC_A_CUT. Legacy rtlwifi usb_driver has no no_dynamic_id.",
       "evidence": [
-        {"source": "~/.research_realtek/WHENCE:3280-3291", "detail": "four fw files + provenance arrays"},
-        {"source": "~/.research_realtek/drivers_net_wireless_realtek_rtlwifi_rtl8192cu_hw.c:894", "detail": "IS_VENDOR_UMC_A_CUT(rtlhal->version)"},
-        {"source": "/tmp/dynid/rtl8192cu_sw.c", "detail": "struct usb_driver without no_dynamic_id"}
+        {
+          "source": "~/.research_realtek/WHENCE:3280-3291",
+          "detail": "four fw files + provenance arrays"
+        },
+        {
+          "source": "~/.research_realtek/drivers_net_wireless_realtek_rtlwifi_rtl8192cu_hw.c:894",
+          "detail": "IS_VENDOR_UMC_A_CUT(rtlhal->version)"
+        },
+        {
+          "source": "/tmp/dynid/rtl8192cu_sw.c",
+          "detail": "struct usb_driver without no_dynamic_id"
+        }
       ]
     },
     {
       "chipset": "MT7601U",
       "family": "mediatek-wifi",
-      "modules": ["mt7601u"],
-      "firmware": ["mt7601u.bin"],
-      "fw_package_debian": ["firmware-mediatek", "linux-firmware"],
+      "modules": [
+        "mt7601u"
+      ],
+      "firmware": [
+        "mt7601u.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-mediatek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["mt7601u"],
+      "new_id_modules": [
+        "mt7601u"
+      ],
       "confidence": "CONFIRMED",
       "notes": "Canonical ID 148f:7601; collides with mt76x0u on 148f:760A (see mediatek research §5).",
       "evidence": [
-        {"source": "modinfo -k 6.17.0-1020-oracle mt7601u", "detail": "firmware: mt7601u.bin; alias usb:v148Fp7601d*..."},
-        {"source": "/tmp/dynid/mt7601u.c", "detail": "no no_dynamic_id"}
+        {
+          "source": "modinfo -k 6.17.0-1020-oracle mt7601u",
+          "detail": "firmware: mt7601u.bin; alias usb:v148Fp7601d*..."
+        },
+        {
+          "source": "/tmp/dynid/mt7601u.c",
+          "detail": "no no_dynamic_id"
+        },
+        {
+          "source": "docs/research/mediatek-atheros.md §1.2 (mt7601u/usb.c master)",
+          "detail": "usb_ids ['0b05:17d3', '0e8d:760a', '0e8d:760b', '13d3:3431', '13d3:3434', '148f:7601', '148f:760a', '148f:760b', '148f:760c', '148f:760d', '2001:3d04', '2717:4106', '2955:0001', '2955:1001', '2955:1003', '2a5f:1000', '7392:7710'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "0b05:17d3",
+        "0e8d:760a",
+        "0e8d:760b",
+        "13d3:3431",
+        "13d3:3434",
+        "148f:7601",
+        "148f:760a",
+        "148f:760b",
+        "148f:760c",
+        "148f:760d",
+        "2001:3d04",
+        "2717:4106",
+        "2955:0001",
+        "2955:1001",
+        "2955:1003",
+        "2a5f:1000",
+        "7392:7710"
       ]
     },
     {
       "chipset": "MT7610U",
       "family": "mediatek-wifi",
-      "modules": ["mt76x0u"],
-      "firmware": ["mediatek/mt7610u.bin", "mediatek/mt7610e.bin"],
-      "fw_package_debian": ["firmware-mediatek", "linux-firmware"],
+      "modules": [
+        "mt76x0u"
+      ],
+      "firmware": [
+        "mediatek/mt7610u.bin",
+        "mediatek/mt7610e.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-mediatek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["mt76x0u"],
+      "new_id_modules": [
+        "mt76x0u"
+      ],
       "confidence": "CONFIRMED",
       "evidence": [
-        {"source": "modinfo -k 6.17.0-1020-oracle mt76x0u", "detail": "firmware mediatek/mt7610u.bin; aliases 0E8D:7650 etc."},
-        {"source": "/tmp/dynid/mt76x0u.c", "detail": "no no_dynamic_id"}
+        {
+          "source": "modinfo -k 6.17.0-1020-oracle mt76x0u",
+          "detail": "firmware mediatek/mt7610u.bin; aliases 0E8D:7650 etc."
+        },
+        {
+          "source": "/tmp/dynid/mt76x0u.c",
+          "detail": "no no_dynamic_id"
+        },
+        {
+          "source": "docs/research/mediatek-atheros.md §6 (consolidated table)",
+          "detail": "usb_ids ['0df6:0075', '0df6:0079', '0e8d:7610', '13b1:003e', '148f:760a', '148f:7610', '148f:761a', '2001:3d02', '20f4:806b', '2357:0105', '2357:010b', '2357:0123'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "0df6:0075",
+        "0df6:0079",
+        "0e8d:7610",
+        "13b1:003e",
+        "148f:760a",
+        "148f:7610",
+        "148f:761a",
+        "2001:3d02",
+        "20f4:806b",
+        "2357:0105",
+        "2357:010b",
+        "2357:0123"
       ]
     },
     {
       "chipset": "MT7612U",
       "family": "mediatek-wifi",
-      "modules": ["mt76x2u"],
-      "firmware": ["mt7662.bin", "mt7662_rom_patch.bin"],
-      "fw_package_debian": ["firmware-mediatek", "linux-firmware"],
+      "modules": [
+        "mt76x2u"
+      ],
+      "firmware": [
+        "mt7662.bin",
+        "mt7662_rom_patch.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-mediatek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["mt76x2u"],
+      "new_id_modules": [
+        "mt76x2u"
+      ],
       "confidence": "CONFIRMED",
       "evidence": [
-        {"source": "modinfo -k 6.17.0-1020-oracle mt76x2u", "detail": "firmware mt7662_rom_patch.bin, mt7662.bin"},
-        {"source": "/tmp/dynid/mt76x2u.c", "detail": "no no_dynamic_id"}
+        {
+          "source": "modinfo -k 6.17.0-1020-oracle mt76x2u",
+          "detail": "firmware mt7662_rom_patch.bin, mt7662.bin"
+        },
+        {
+          "source": "/tmp/dynid/mt76x2u.c",
+          "detail": "no no_dynamic_id"
+        },
+        {
+          "source": "docs/research/mediatek-atheros.md §6 (consolidated table)",
+          "detail": "usb_ids ['045e:02e6', '045e:02fe', '0471:2126', '0471:7600', '0846:9014', '0846:9053', '0e8d:7612', '0e8d:7632', '2357:0137', '2c4e:0103', '7392:b711'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "045e:02e6",
+        "045e:02fe",
+        "0471:2126",
+        "0471:7600",
+        "0846:9014",
+        "0846:9053",
+        "0e8d:7612",
+        "0e8d:7632",
+        "2357:0137",
+        "2c4e:0103",
+        "7392:b711"
       ]
     },
     {
       "chipset": "MT7921AU",
       "family": "mediatek-wifi",
-      "modules": ["mt7921u"],
-      "firmware": ["mediatek/WIFI_MT7961_patch_mcu_1_2_hdr.bin", "mediatek/WIFI_RAM_CODE_MT7961_1.bin"],
-      "fw_package_debian": ["firmware-mediatek", "linux-firmware"],
+      "modules": [
+        "mt7921u"
+      ],
+      "firmware": [
+        "mediatek/WIFI_MT7961_patch_mcu_1_2_hdr.bin",
+        "mediatek/WIFI_RAM_CODE_MT7961_1.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-mediatek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["mt7921u"],
+      "new_id_modules": [
+        "mt7921u"
+      ],
       "confidence": "CONFIRMED",
       "evidence": [
-        {"source": "modinfo -k 6.17.0-1020-oracle mt7921u", "detail": "WIFI_MT7961_* firmwares; icFFiscFFipFF aliases"},
-        {"source": "/tmp/dynid/mt7921u.c", "detail": "no no_dynamic_id"}
+        {
+          "source": "modinfo -k 6.17.0-1020-oracle mt7921u",
+          "detail": "WIFI_MT7961_* firmwares; icFFiscFFipFF aliases"
+        },
+        {
+          "source": "/tmp/dynid/mt7921u.c",
+          "detail": "no no_dynamic_id"
+        },
+        {
+          "source": "docs/research/mediatek-atheros.md §3 (mt7921u id table)",
+          "detail": "usb_ids ['0846:9060', '0846:9065', '0e8d:7961', '3574:6211', '35bc:0107'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "0846:9060",
+        "0846:9065",
+        "0e8d:7961",
+        "3574:6211",
+        "35bc:0107"
       ]
     },
     {
       "chipset": "AR9271",
       "family": "atheros-wifi",
-      "modules": ["ath9k_htc"],
-      "firmware": ["ath9k_htc/htc_9271-1.4.0.fw"],
-      "fw_package_debian": ["firmware-atheros", "linux-firmware"],
+      "modules": [
+        "ath9k_htc"
+      ],
+      "firmware": [
+        "ath9k_htc/htc_9271-1.4.0.fw"
+      ],
+      "fw_package_debian": [
+        "firmware-atheros",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["ath9k_htc"],
+      "new_id_modules": [
+        "ath9k_htc"
+      ],
       "confidence": "CONFIRMED",
       "notes": "openfw variant exists under LICENCE.open-ath9k-htc-firmware (WHENCE:308).",
       "evidence": [
-        {"source": "modinfo -k 6.17.0-1020-oracle ath9k_htc", "detail": "htc_9271-1.4.0.fw; alias 0CF3:9271"},
-        {"source": "/tmp/dynid/ath9k_htc.c", "detail": "hif_usb driver, no no_dynamic_id"}
+        {
+          "source": "modinfo -k 6.17.0-1020-oracle ath9k_htc",
+          "detail": "htc_9271-1.4.0.fw; alias 0CF3:9271"
+        },
+        {
+          "source": "/tmp/dynid/ath9k_htc.c",
+          "detail": "hif_usb driver, no no_dynamic_id"
+        },
+        {
+          "source": "docs/research/mediatek-atheros.md §4.1 (ath9k hif_usb.c master)",
+          "detail": "usb_ids ['057c:8403', '07b8:9271', '07d1:3a10', '0846:9030', '0cf3:1006', '0cf3:20ff', '0cf3:7010', '0cf3:7015', '0cf3:9271', '13d3:3327'] captured from primary-source table"
+        }
+      ],
+      "usb_ids": [
+        "057c:8403",
+        "07b8:9271",
+        "07d1:3a10",
+        "0846:9030",
+        "0cf3:1006",
+        "0cf3:20ff",
+        "0cf3:7010",
+        "0cf3:7015",
+        "0cf3:9271",
+        "13d3:3327"
       ]
     },
     {
       "chipset": "CSR8510",
       "family": "bluetooth-csr",
-      "modules": ["btusb"],
+      "modules": [
+        "btusb"
+      ],
       "firmware": [],
       "fw_package_debian": [],
       "new_id_feasible": true,
-      "new_id_modules": ["btusb"],
+      "new_id_modules": [
+        "btusb"
+      ],
       "confidence": "HIGH_CONFIDENCE",
       "notes": "Clone detection via LMP subversion divergence remains UNKNOWN pending hardware experiment (realtek.md §5). btusb accepts new_id (struct at btusb.c has no flag).",
       "evidence": [
-        {"source": "/tmp/dynid/btusb.c", "detail": "BTUSB_CSR flag exists; generic new_id accepted"}
+        {
+          "source": "/tmp/dynid/btusb.c",
+          "detail": "BTUSB_CSR flag exists; generic new_id accepted"
+        }
       ]
     },
     {
       "chipset": "RTL8761BU",
       "family": "realtek-bt",
-      "modules": ["btusb+btrtl"],
-      "firmware": ["rtl_bt/rtl8761bu_fw.bin", "rtl_bt/rtl8761bu_config.bin"],
-      "fw_package_debian": ["firmware-realtek", "linux-firmware"],
+      "modules": [
+        "btusb+btrtl"
+      ],
+      "firmware": [
+        "rtl_bt/rtl8761bu_fw.bin",
+        "rtl_bt/rtl8761bu_config.bin"
+      ],
+      "fw_package_debian": [
+        "firmware-realtek",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["btusb"],
+      "new_id_modules": [
+        "btusb"
+      ],
       "confidence": "CONFIRMED",
       "notes": "Kernel distinguishes B(UART) vs BU(USB) by HCI bus field, same lmp_subver/hci_rev — see realtek.md §3.",
       "evidence": [
-        {"source": "~/.research_realtek/drivers_bluetooth_btrtl.c:226-234", "detail": "IC_INFO(0x8761, 0xb, 0xa, HCI_USB) -> rtl8761bu_fw/_config"}
+        {
+          "source": "~/.research_realtek/drivers_bluetooth_btrtl.c:226-234",
+          "detail": "IC_INFO(0x8761, 0xb, 0xa, HCI_USB) -> rtl8761bu_fw/_config"
+        },
+        {
+          "source": "/tmp/dynid/btusb.c:835-852 (verbatim block)",
+          "detail": "usb_ids from 'Additional Realtek 8761BUV' block"
+        }
+      ],
+      "usb_ids": [
+        "0b05:190e",
+        "0bda:8771",
+        "2357:0604",
+        "2357:0607",
+        "2550:8761",
+        "2b89:8761",
+        "2c4e:0115",
+        "6655:8771",
+        "7392:c611"
       ]
     },
     {
       "chipset": "BCM20702",
       "family": "bluetooth-broadcom",
-      "modules": ["btusb+btbcm"],
-      "firmware": ["brcm/BCM20702A*.hcd"],
-      "fw_package_debian": ["firmware-brcm80211? / bluez-firmware", "linux-firmware"],
+      "modules": [
+        "btusb+btbcm"
+      ],
+      "firmware": [
+        "brcm/BCM20702A*.hcd"
+      ],
+      "fw_package_debian": [
+        "firmware-brcm80211? / bluez-firmware",
+        "linux-firmware"
+      ],
       "new_id_feasible": true,
-      "new_id_modules": ["btusb"],
+      "new_id_modules": [
+        "btusb"
+      ],
       "confidence": "PROBABLE",
       "notes": "Package mapping for BCM hcd files NOT verified against .debs this session; firmware glob approximate — mark UNKNOWN until verified.",
       "evidence": [
-        {"source": "general kernel knowledge", "detail": "btusb+btbcm load brcm/*.hcd; exact WHENCE lines not captured"}
+        {
+          "source": "general kernel knowledge",
+          "detail": "btusb+btbcm load brcm/*.hcd; exact WHENCE lines not captured"
+        }
       ]
     }
   ]
