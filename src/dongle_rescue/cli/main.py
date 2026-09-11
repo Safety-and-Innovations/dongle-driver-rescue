@@ -400,20 +400,20 @@ def _cmd_doctor(host, kb):
     lines.append(f"knowledge base entries: {len(kb.get('chipsets', []))}")
     lines.append("network policy: offline by default (--no-network respected)")
 
-    # Acesso ao log do kernel: o `doctor` existe para dizer o que dá para
-    # inspecionar nesta máquina, e ler o dmesg é parte central do diagnóstico
-    # de estado C. O planejador existia mas não era chamado por ninguém.
+    # Kernel log access: `doctor` exists to report what can be inspected on
+    # this machine, and reading dmesg is central to the state-C diagnosis.
+    # The planner existed but was called by nobody.
     if host is not None:
         try:
-            tem_journalctl, plano = plan_kernel_log_access(host, release)
-            lines.append(f"journalctl available: {'yes' if tem_journalctl else 'NO'}")
-            lines.append(f"kernel log plan: {plano}")
-        except Exception as exc:  # nunca derruba o doctor
+            has_journalctl, plan = plan_kernel_log_access(host, release)
+            lines.append(f"journalctl available: {'yes' if has_journalctl else 'NO'}")
+            lines.append(f"kernel log plan: {plan}")
+        except Exception as exc:  # never take down the doctor
             lines.append(f"kernel log plan: unavailable ({exc})")
 
-        pendente, motivo = reboot_pending(host, release)
-        estado = {True: "yes", False: "no", None: "unknown"}[pendente]
-        lines.append(f"reboot pending: {estado} ({motivo})")
+        pending, reason = reboot_pending(host, release)
+        state = {True: "yes", False: "no", None: "unknown"}[pending]
+        lines.append(f"reboot pending: {state} ({reason})")
 
     return EXIT_OK, "\n".join(lines) + "\n"
 
@@ -421,25 +421,26 @@ def _cmd_doctor(host, kb):
 def main() -> int:  # console_scripts entry point
     import sys
 
-    # O HOST REAL entra aqui.
+    # The REAL HOST enters here.
     #
-    # `run()` aceita host=None porque e a costura de injecao usada pelos testes.
-    # Mas main() tambem chamava run() SEM host, entao em producao host era
-    # sempre None: `enumerate_usb_devices(host) if host else []` devolvia lista
-    # vazia, `verify` respondia "no host available" e o `doctor` pulava tudo que
-    # depende da maquina. Ou seja, a ferramenta nunca conseguia diagnosticar um
-    # dongle de verdade pela linha de comando — so pelos testes, que injetam um
-    # host falso. RealHost ja existia (host.py) e nunca era instanciado.
+    # `run()` accepts host=None because that is the injection seam used by the
+    # tests. But main() also called run() WITHOUT a host, so in production the
+    # host was always None: `enumerate_usb_devices(host) if host else []`
+    # returned an empty list, `verify` answered "no host available" and
+    # `doctor` skipped everything machine-dependent. In other words, the tool
+    # could never diagnose a real dongle from the command line — only via the
+    # tests, which inject a fake host. RealHost already existed (host.py) and
+    # was never instantiated.
     code, text = run(sys.argv[1:], host=RealHost())
     print(text, end="")
     return code
 
 
-# `python -m dongle_rescue.cli.main <cmd>` precisa deste guard.
+# `python -m dongle_rescue.cli.main <cmd>` needs this guard.
 #
-# Sem ele o modulo era apenas importado: definia tudo, nao chamava nada e saia
-# com codigo 0 SEM IMPRIMIR NADA. O entry point de console (dongle-rescue,
-# declarado no pyproject) funcionava, mas a invocacao que o proprio README
-# documenta rodava em silencio.
+# Without it the module was only imported: it defined everything, called
+# nothing and exited with code 0 WITHOUT PRINTING ANYTHING. The console entry
+# point (dongle-rescue, declared in pyproject) worked, but the invocation the
+# README itself documents ran in silence.
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())

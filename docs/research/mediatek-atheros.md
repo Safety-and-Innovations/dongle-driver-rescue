@@ -5,7 +5,7 @@
 | Documento | `docs/research/mediatek-atheros.md` |
 | Data | 2026-08-22 |
 | Revisão | 2 (substitui o rascunho da rev. 1; corrige licença do firmware 1.4.0 do ath9k_htc e fecha as versões de kernel que estavam UNKNOWN) |
-| Responsável | forg3 |
+| Responsible | forg3 |
 
 Regra do projeto (docs/SPEC.md §28): fato sem citação/evidência = `UNKNOWN`.
 Marcadores usados abaixo: **CONFIRMED** (verificado nesta sessão, saída embutida),

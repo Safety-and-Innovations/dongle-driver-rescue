@@ -132,11 +132,11 @@ def _require_hex4(value: str, name: str) -> None:
 def require_module_name(value: str) -> str:
     """Kernel module name grammar (ADR 0002 S3). Raises ValueError.
 
-    O primeiro caractere precisa ser alfanumerico. A gramatica anterior era
-    ``[a-z0-9_-]{1,64}``, que aceitava nome iniciado por hifen (``-rf``,
-    ``--force``): usado como ARGUMENTO de comando, um nome desses deixa de ser
-    nome e vira flag. Nenhum modulo real do kernel comeca com hifen, entao
-    fechar isso nao custa nada.
+    The first character must be alphanumeric. The previous grammar was
+    ``[a-z0-9_-]{1,64}``, which accepted names starting with a hyphen
+    (``-rf``, ``--force``): used as a COMMAND ARGUMENT, such a name stops
+    being a name and becomes a flag. No real kernel module starts with a
+    hyphen, so closing this costs nothing.
     """
     import re
 

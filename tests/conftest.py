@@ -176,33 +176,33 @@ def alias_lines_synthetic() -> list[str]:
     return list(ALIAS_MT7601_BOUND_SCENARIO)
 
 # ---------------------------------------------------------------------------
-# Guarda de plataforma para a arvore de fixtures.
+# Platform guard for the fixture tree.
 #
-# As fixtures reproduzem o sysfs do kernel e contem diretorios como
-# `sys/bus/usb/devices/1-3:1.0`. Dois-pontos e caractere reservado no NTFS: num
-# checkout Windows esses caminhos NAO EXISTEM — o git grava nomes 8.3 mutilados
-# (`1HIVA8~9.0`) e marca os arquivos reais como deletados. Rodar a suite assim
-# produz dezenas de erros confusos, e um `git add -A` apaga as fixtures do
-# repositorio. Melhor falhar cedo, com o motivo explicito.
+# The fixtures mirror the kernel sysfs and contain directories like
+# `sys/bus/usb/devices/1-3:1.0`. A colon is a reserved character on NTFS: on a
+# Windows checkout those paths DO NOT EXIST — git writes mangled 8.3 names
+# (`1HIVA8~9.0`) and marks the real files as deleted. Running the suite that
+# way produces dozens of confusing errors, and a `git add -A` deletes the
+# fixtures from the repository. Better to fail early, with an explicit reason.
 # ---------------------------------------------------------------------------
 
-_ARVORE = pathlib.Path(__file__).parent / "fixtures" / "tree"
-_ESPERADOS = [
-    _ARVORE / "mt7601_ok/sys/bus/usb/devices/1-3:1.0",
-    _ARVORE / "rtl8811cu_unbound/sys/bus/usb/devices/1-2:1.0",
-    _ARVORE / "collision_760a/sys/bus/usb/devices/1-4:1.0",
+_TREE = pathlib.Path(__file__).parent / "fixtures" / "tree"
+_EXPECTED = [
+    _TREE / "mt7601_ok/sys/bus/usb/devices/1-3:1.0",
+    _TREE / "rtl8811cu_unbound/sys/bus/usb/devices/1-2:1.0",
+    _TREE / "collision_760a/sys/bus/usb/devices/1-4:1.0",
 ]
 
 
 def pytest_configure(config):
-    faltando = [p for p in _ESPERADOS if not p.is_dir()]
-    if not faltando:
+    missing = [p for p in _EXPECTED if not p.is_dir()]
+    if not missing:
         return
     raise pytest.UsageError(
-        "arvore de fixtures incompleta: "
-        + ", ".join(str(p.relative_to(_ARVORE.parent)) for p in faltando)
-        + ".\n\nDiretorios com ':' nao existem em NTFS. Este repositorio precisa "
-        "ser clonado e executado em Linux ou WSL — nunca num checkout Windows. "
-        "Se ja houver um checkout Windows quebrado, descarte-o e clone de novo "
-        "dentro do WSL; NAO rode `git add -A` nele, pois isso apaga as fixtures."
+        "incomplete fixture tree: "
+        + ", ".join(str(p.relative_to(_TREE.parent)) for p in missing)
+        + ".\n\nDirectories with ':' do not exist on NTFS. This repository must "
+        "be cloned and run on Linux or WSL — never on a Windows checkout. "
+        "If you already have a broken Windows checkout, discard it and clone "
+        "again inside WSL; do NOT run `git add -A` there, it deletes the fixtures."
     )

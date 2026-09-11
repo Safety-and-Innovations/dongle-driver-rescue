@@ -2,7 +2,7 @@
 
 - **Status:** Aceito
 - **Data:** 2026-08-22
-- **Responsável:** Lead Engineering Agent (ox-alpha), por ordem de forg3
+- **Responsible:** forg3
 - **Decisores:** Lead Agent; revisão pelo gate do Milestone 3
 
 ## Contexto

@@ -27,40 +27,40 @@ _DMESG_DENIED = "Operation not permitted"
 
 
 def plan_kernel_log_access(host: Host, release: str | None = None) -> tuple[bool, str]:
-    """Descreve COMO obter o log do kernel nesta máquina, sem executar nada.
+    """Describe HOW to obtain the kernel log on this machine, without running anything.
 
-    O núcleo puro não pode criar processos (SPEC §37): quem roda os argv é a
-    camada de CLI. Esta função inspeciona o ambiente e devolve
-    ``(journalctl_disponivel, texto_do_plano)``.
+    The pure core cannot spawn processes (SPEC §37): the CLI layer runs the
+    argv. This function inspects the environment and returns
+    ``(journalctl_available, plan_text)``.
 
-    Renomeada de ``collect_kernel_log``: aquele nome prometia coletar o log,
-    mas a função devolvia ``None`` em todos os caminhos e não era chamada por
-    nada — nem produção, nem teste (confirmado por cobertura: as linhas nunca
-    executavam). Trazia ainda uma sonda inútil que lia ``/proc/self/cmdline``
-    e descartava o resultado com ``del``.
+    Renamed from ``collect_kernel_log``: that name promised to collect the log,
+    but the function returned ``None`` on every path and was called by
+    nothing — neither production nor tests (confirmed by coverage: the lines
+    never executed). It also carried a useless probe that read
+    ``/proc/self/cmdline`` and discarded the result with ``del``.
     """
-    alvo = release or platform.release()
-    tem_journalctl = False
+    target = release or platform.release()
+    has_journalctl = False
     try:
-        tem_journalctl = bool(host.exists(JOURNALCTL_ARGV[0]))
+        has_journalctl = bool(host.exists(JOURNALCTL_ARGV[0]))
     except (HostError, OSError):
-        tem_journalctl = False
+        has_journalctl = False
 
-    if tem_journalctl:
-        plano = (
-            f"kernel {alvo}: rode {' '.join(JOURNALCTL_ARGV)}; "
-            f"se falhar, caia para {' '.join(DMESG_ARGV)} "
-            f"(negado => '{_DMESG_DENIED}', saída 1 quando dmesg_restrict=1; "
-            "entre no grupo adm/systemd-journal ou repita com privilégio)."
+    if has_journalctl:
+        plan = (
+            f"kernel {target}: run {' '.join(JOURNALCTL_ARGV)}; "
+            f"if it fails, fall back to {' '.join(DMESG_ARGV)} "
+            f"(denied => '{_DMESG_DENIED}', exit 1 when dmesg_restrict=1; "
+            "join the adm/systemd-journal group or retry with privilege)."
         )
     else:
-        plano = (
-            f"kernel {alvo}: {JOURNALCTL_ARGV[0]} não encontrado; "
+        plan = (
+            f"kernel {target}: {JOURNALCTL_ARGV[0]} not found; "
             f"use {' '.join(DMESG_ARGV)} "
-            f"(negado => '{_DMESG_DENIED}', saída 1 quando dmesg_restrict=1; "
-            "repita com privilégio para ler o buffer do kernel)."
+            f"(denied => '{_DMESG_DENIED}', exit 1 when dmesg_restrict=1; "
+            "retry with privilege to read the kernel buffer)."
         )
-    return tem_journalctl, plano
+    return has_journalctl, plan
 
 
 def reboot_pending(host: Host, running_release: str | None = None) -> tuple[bool | None, str]:

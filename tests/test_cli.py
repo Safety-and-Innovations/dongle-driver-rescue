@@ -236,11 +236,11 @@ def test_no_network_flag_propagates_to_recommendations(tmp_path):
     assert "NO_ACTION_REQUIRED" in out
 
 
-def test_doctor_reporta_plano_de_log_e_reboot(fake_host):
-    """O `doctor` passou a expor o acesso ao log do kernel.
+def test_doctor_reports_log_plan_and_reboot(fake_host):
+    """`doctor` now exposes kernel log access.
 
-    O planejador existia mas nao era chamado por ninguem; o doctor omitia
-    justamente a informacao de que precisa quem vai diagnosticar estado C.
+    The planner existed but was called by nobody; the doctor omitted exactly
+    the information needed by anyone diagnosing state C.
     """
     code, out = run(["doctor"], host=fake_host)
 
@@ -250,8 +250,8 @@ def test_doctor_reporta_plano_de_log_e_reboot(fake_host):
     assert "reboot pending:" in out
 
 
-def test_doctor_sem_host_nao_quebra():
-    """Sem host injetado o doctor ainda responde o que nao depende da maquina."""
+def test_doctor_without_host_does_not_break():
+    """Without an injected host, doctor still answers host-independent parts."""
     code, out = run(["doctor"])
 
     assert code == 0
