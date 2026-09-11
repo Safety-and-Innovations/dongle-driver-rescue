@@ -1,7 +1,7 @@
 name: CI
 
-# Roda a cada push e pull request. Cada job trava a volta de um defeito que ja
-# chegou ao repositorio — nao e verificacao generica.
+# Runs on every push and pull request. Each job pins down the return of a defect that
+# already reached the repository — not generic verification.
 on:
   push:
     branches: [main]
@@ -27,11 +27,11 @@ jobs:
       - name: Dependencias de teste
         run: python -m pip install --quiet pytest pytest-cov
 
-      # A arvore de fixtures reproduz o sysfs e contem diretorios como
-      # `1-3:1.0`. Dois-pontos e reservado no NTFS: um checkout Windows grava
-      # nomes 8.3 mutilados e marca os arquivos reais como deletados — e um
-      # `git add -A` nesse estado APAGA as fixtures do repositorio. Este passo
-      # pega isso antes de virar prejuizo.
+      # The fixture tree reproduces sysfs and contains directories like
+      # `1-3:1.0`. Colons are reserved on NTFS: a Windows checkout writes
+      # mangled 8.3 names and marks the real files as deleted — and a
+      # `git add -A` in that state DELETES the fixtures from the repository. This step
+      # catches that before it causes damage.
       - name: Arvore de fixtures intacta
         run: |
           faltando=0
@@ -61,11 +61,11 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=85
 
-      # O CLI ja esteve COMPLETAMENTE inoperante enquanto os 186 testes
-      # passavam: main() nunca injetava o host real e faltava o guard
-      # __main__, entao `python -m ...` saia com codigo 0 sem imprimir NADA.
-      # Nenhum teste unitario pegava isso, porque todos injetam host falso.
-      # Este smoke exercita o ponto de entrada de producao.
+      # The CLI was once COMPLETELY broken while all 186 tests
+      # passed: main() never injected the real host and the __main__
+      # guard was missing, so `python -m ...` exited with code 0 without printing ANYTHING.
+      # No unit test caught it, because all of them inject a fake host.
+      # This smoke test exercises the production entry point.
       - name: Smoke do CLI (ponto de entrada real)
         env:
           PYTHONPATH: src
@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # historico inteiro, nao so o ultimo commit
+          fetch-depth: 0   # full history, not just the latest commit
 
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2

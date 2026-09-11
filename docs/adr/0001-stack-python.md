@@ -1,59 +1,59 @@
-# ADR 0001 — Linguagem e stack da V1
+# ADR 0001 — V1 language and stack
 
-- **Status:** Aceito
-- **Data:** 2026-08-22
+- **Status:** Accepted
+- **Date:** 2026-08-22
 - **Responsible:** forg3
-- **Decisores:** Lead Agent; revisão pelo gate do Milestone 3
+- **Deciders:** Lead Agent; review by the Milestone 3 gate
 
-## Contexto
+## Context
 
-A SPEC (§31) exige escolha de stack com base em: segurança, integração com o SO,
-manutenção, portabilidade, capacidade de gerar binário, facilidade de testes e
-integração com APIs nativas — não preferência pessoal. Candidatos avaliados:
+The SPEC (§31) requires choosing a stack based on: security, OS integration,
+maintenance, portability, binary-generation capability, test ease, and
+native-API integration — not personal preference. Candidates evaluated:
 Rust, Go, Python, C/C++.
 
-Fatos verificados no host de referência (Ubuntu 24.04, kernel 6.17):
+Facts verified on the reference host (Ubuntu 24.04, kernel 6.17):
 
-| Fato | Evidência |
+| Fact | Evidence |
 |---|---|
-| Toolchains Rust/Go ausentes | `rustc`, `cargo`, `go` não instalados; instalação via rustup/golang adicionaria dependência de rede ao ciclo de build |
-| Cadeia de ferramentas do domínio toda é executável a partir de Python | `lsusb`, `modinfo`, `journalctl`, `udevadm`, `modprobe`, `iw`, `bluetoothctl` são binários do SO que a ferramenta invoca e cuja saída parseia |
-| Python 3.12 presente | `python3 --version` = 3.12.3 |
-| Toda a "API nativa" relevante é sysfs + netlink + logs de texto | `/sys/bus/usb/devices/*`, `/lib/modules/$(uname -r)/modules.alias`, dmesg — acesso via stdlib (`os`, `pathlib`, `subprocess`) |
+| Rust/Go toolchains missing | `rustc`, `cargo`, `go` not installed; installing via rustup/golang would add a network dependency to the build cycle |
+| Entire domain toolchain is executable from Python | `lsusb`, `modinfo`, `journalctl`, `udevadm`, `modprobe`, `iw`, `bluetoothctl` are OS binaries that the tool invokes and whose output it parses |
+| Python 3.12 present | `python3 --version` = 3.12.3 |
+| All relevant "native API" is sysfs + netlink + text logs | `/sys/bus/usb/devices/*`, `/lib/modules/$(uname -r)/modules.alias`, dmesg — access via stdlib (`os`, `pathlib`, `subprocess`) |
 
-Análise por critério:
+Analysis by criterion:
 
-- **Integração com SO:** empate técnico entre as quatro linguagens; todas chamam
-  os mesmos binários e leem os mesmos arquivos.
-- **Capacidade de gerar binário:** Rust/Go geram binário único; Python exige
-  PyInstaller/Shiv (aceitável para ferramenta de técnico).
-- **Segurança:** linguagem não elimina a classe de risco dominante deste produto
-  (injeção em comando, path traversal em nome de firmware vindo de log, parsing
-  de entrada hostil). O controle está em camada de design — ver ADR 0002.
-- **Facilidade de testes/fixtures:** pytest com parametrização sobre fixtures de
-  sysfs sintéticos é o caminho mais direto para o requisito §20 (testes sem
-  hardware físico) e §22 (failure injection).
-- **Manutenção:** equipe real é enxuta; ecossistema de parse/CLI maduro pesa.
+- **OS integration:** technical tie among all four languages; all call
+  the same binaries and read the same files.
+- **Binary-generation capability:** Rust/Go produce a single binary; Python requires
+  PyInstaller/Shiv (acceptable for a technician tool).
+- **Security:** language does not eliminate this product's dominant risk class
+  (command injection, path traversal in log-sourced firmware names, hostile-input
+  parsing). The control is at the design layer — see ADR 0002.
+- **Test/fixture ease:** pytest with parametrization over synthetic
+  sysfs fixtures is the most direct path to requirement §20 (testing without
+  physical hardware) and §22 (failure injection).
+- **Maintenance:** the real team is lean; a mature parse/CLI ecosystem matters.
 
-## Decisão
+## Decision
 
-**Python 3.12+ (somente stdlib na V1 para o núcleo; pytest como dependência de
-desenvolvimento).** Empacotamento executável via entry point `dongle-rescue`;
-geração de binário autônomo (PyInstaller) fica para o Milestone 8.
+**Python 3.12+ (stdlib only in V1 for the core; pytest as a
+development dependency).** Executable packaging via the `dongle-rescue` entry point;
+standalone binary generation (PyInstaller) is deferred to Milestone 8.
 
-## Consequências
+## Consequences
 
-- Zero dependência de runtime além do interpretador já presente nas distros-alvo.
-- Módulos que exigissem extensão C (ex.: raw netlink próprio) ficam fora da V1;
-  tudo passa por CLIs do SO, o que também isola a superfície de segurança.
-- Revisitar este ADR se surgir requisito de performance que Python não atenda
-  (improvável: o gargalo é I/O de subprocesso, não CPU).
+- Zero runtime dependency beyond the interpreter already present on target distros.
+- Modules that would require a C extension (e.g. own raw netlink) stay out of V1;
+  everything goes through OS CLIs, which also isolates the security surface.
+- Revisit this ADR if a performance requirement arises that Python cannot meet
+  (unlikely: the bottleneck is subprocess I/O, not CPU).
 
-## Alternativas rejeitadas
+## Rejected alternatives
 
-- **Rust:** melhor binário e memória-safe, mas custo de iteração maior para uma
-  V1 cujo risco dominante é corretude da lógica de evidência, não performance.
-- **Go:** bom binário único; perde para Python em expressividade de fixtures de
-  teste e na curva de contribuição externa (topo de funil da comunidade Linux).
-- **C/C++:** memória insegura em um produto que parseia entrada hostil — pior
-  opção para o perfil de ameaça (ADR 0002).
+- **Rust:** better binary and memory-safe, but higher iteration cost for a
+  V1 whose dominant risk is evidence-logic correctness, not performance.
+- **Go:** good single binary; loses to Python in test-fixture expressiveness
+  and in the external contribution curve (top of the Linux community funnel).
+- **C/C++:** memory-unsafe in a product that parses hostile input — worst
+  option for the threat profile (ADR 0002).

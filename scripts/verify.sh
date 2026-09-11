@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Verificacao completa do repositorio, rodando LOCALMENTE.
+# Full repository verification, running LOCALLY.
 #
-# Roda as MESMAS checagens dos jobs de .github/workflows/ci.yml. Existe porque a
-# franquia mensal de Actions da organizacao ja foi consumida: os jobs falham no
-# arranque ("The job was not started because recent account payments have failed
-# or your spending limit needs to be increased") ate a virada do mes. Os
-# gatilhos do workflow ficam ligados de proposito, para o CI voltar sozinho.
+# Runs the SAME checks as the .github/workflows/ci.yml jobs. It exists because the
+# org's monthly Actions quota has already been consumed: the jobs fail at
+# startup ("The job was not started because recent account payments have failed
+# or your spending limit needs to be increased") until the month turns over. The
+# workflow triggers stay on on purpose, so CI comes back on its own.
 #
-# Cada checagem existe por causa de um defeito que ja chegou ao repositorio.
+# Each check exists because of a defect that already reached the repository.
 #
-# Uso:
-#   ./scripts/verify.sh            tudo
-#   ./scripts/verify.sh --quick    pula a varredura de historico
-#   ./scripts/verify.sh fixtures   so um grupo: fixtures|tests|smoke|secrets
+# Usage:
+#   ./scripts/verify.sh            everything
+#   ./scripts/verify.sh --quick    skip the history scan
+#   ./scripts/verify.sh fixtures   only one group: fixtures|tests|smoke|secrets
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -26,117 +26,119 @@ for a in "$@"; do
     esac
 done
 
-FALHAS=()
-AVISOS=()
+FAILURES=()
+WARNINGS=()
 
-titulo() { printf '\n%s\n  %s\n%s\n' "$(printf '=%.0s' {1..68})" "$1" "$(printf '=%.0s' {1..68})"; }
-ok()     { printf '  [OK]    %s\n' "$1"; }
-falha()  { printf '  [FALHA] %s\n' "$1"; FALHAS+=("$1"); }
-aviso()  { printf '  [AVISO] %s\n' "$1"; AVISOS+=("$1"); }
-rodar()  { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
+title() { printf '\n%s\n  %s\n%s\n' "$(printf '=%.0s' {1..68})" "$1" "$(printf '=%.0s' {1..68})"; }
+ok()    { printf '  [OK]    %s\n' "$1"; }
+fail()  { printf '  [FAIL] %s\n' "$1"; FAILURES+=("$1"); }
+warn()  { printf '  [WARNING] %s\n' "$1"; WARNINGS+=("$1"); }
+should_run() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
-# escolhe o python do venv, se existir
+# pick the venv python, if present
 PY="./.venv/bin/python"
 [ -x "$PY" ] || PY="$(command -v python3 || true)"
 
 # ------------------------------------------------------------- fixtures ----
-if rodar fixtures; then
-    titulo "ARVORE DE FIXTURES"
-    # As fixtures reproduzem o sysfs e contem diretorios como `1-3:1.0`.
-    # Dois-pontos e reservado no NTFS: um checkout Windows grava nomes 8.3
-    # mutilados e marca os arquivos reais como deletados — e um `git add -A`
-    # nesse estado APAGA as fixtures do repositorio.
-    faltando=0
+if should_run fixtures; then
+    title "FIXTURE TREE"
+    # Fixtures reproduce sysfs and contain directories like `1-3:1.0`.
+    # Colons are reserved on NTFS: a Windows checkout writes mangled 8.3
+    # names and marks the real files as deleted — and a `git add -A`
+    # in that state DELETES the fixtures from the repository.
+    missing_any=0
     for d in \
       "tests/fixtures/tree/mt7601_ok/sys/bus/usb/devices/1-3:1.0" \
       "tests/fixtures/tree/rtl8811cu_unbound/sys/bus/usb/devices/1-2:1.0" \
       "tests/fixtures/tree/collision_760a/sys/bus/usb/devices/1-4:1.0" ; do
-        if [ -d "$d" ]; then ok "$d"; else falha "ausente: $d"; faltando=1; fi
+        if [ -d "$d" ]; then ok "$d"; else fail "missing: $d"; missing_any=1; fi
     done
     if git ls-files | grep -qE '~[A-Z0-9]{2}\.[0-9]'; then
-        falha "nomes 8.3 mutilados versionados (checkout Windows quebrado)"
+        fail "mangled 8.3 names committed (broken Windows checkout)"
         git ls-files | grep -E '~[A-Z0-9]{2}\.[0-9]' | sed 's/^/          /'
     else
-        ok "nenhum nome 8.3 mutilado versionado"
+        ok "no mangled 8.3 names committed"
     fi
-    [ "$faltando" -eq 1 ] && printf '          -> clone e rode este repo em Linux/WSL, nunca em Windows\n'
+    [ "$missing_any" -eq 1 ] && printf '          -> clone and run this repo on Linux/WSL, never on Windows\n'
 fi
 
-# ---------------------------------------------------------------- testes ---
-if rodar tests; then
-    titulo "TESTES + COBERTURA (gate 85%)"
+# ------------------------------------------------------------------ tests ---
+if should_run tests; then
+    title "TESTS + COVERAGE (85% gate)"
     if [ -z "$PY" ]; then
-        aviso "python3 ausente; testes pulados"
+        warn "python3 missing; tests skipped"
     elif ! "$PY" -c 'import pytest' 2>/dev/null; then
-        aviso "pytest ausente; rode: $PY -m pip install pytest pytest-cov"
+        warn "pytest missing; run: $PY -m pip install pytest pytest-cov"
     else
-        saida=$(PYTHONPATH=src "$PY" -m pytest tests/ -q --no-header \
+        output=$(PYTHONPATH=src "$PY" -m pytest tests/ -q --no-header \
                   --cov=src/dongle_rescue --cov-report=term \
                   --cov-fail-under=85 2>&1)
         rc=$?
-        linha=$(echo "$saida" | grep -E 'passed|failed' | tail -1)
-        cob=$(echo "$saida" | grep -E '^TOTAL' | awk '{print $NF}')
-        if [ $rc -eq 0 ]; then ok "${linha:-testes ok} | cobertura ${cob:-?}"
+        result_line=$(echo "$output" | grep -E 'passed|failed' | tail -1)
+        cov=$(echo "$output" | grep -E '^TOTAL' | awk '{print $NF}')
+        if [ $rc -eq 0 ]; then ok "${result_line:-tests ok} | coverage ${cov:-?}"
         else
-            falha "testes/cobertura reprovaram (${cob:-?})"
-            echo "$saida" | grep -E 'FAILED|Required test coverage' | head -8 | sed 's/^/          /'
+            fail "tests/coverage failed (${cov:-?})"
+            echo "$output" | grep -E 'FAILED|Required test coverage' | head -8 | sed 's/^/          /'
         fi
     fi
 fi
 
-# ----------------------------------------------------------------- smoke ---
-if rodar smoke; then
-    titulo "SMOKE DO CLI (ponto de entrada real)"
-    # O CLI ja esteve COMPLETAMENTE inoperante enquanto os 186 testes passavam:
-    # main() nunca injetava o host real e faltava o guard __main__, entao
-    # `python -m ...` saia com codigo 0 sem imprimir NADA. Nenhum teste
-    # unitario pegava, porque todos injetam host falso.
+# ------------------------------------------------------------------ smoke ---
+if should_run smoke; then
+    title "CLI SMOKE (real entry point)"
+    # The CLI was once COMPLETELY broken while all 186 tests passed:
+    # main() never injected the real host and the __main__ guard was missing, so
+    # `python -m ...` exited with code 0 without printing ANYTHING. No unit
+    # test caught it, because all of them inject a fake host.
     if [ -z "$PY" ]; then
-        aviso "python3 ausente; smoke pulado"
+        warn "python3 missing; smoke skipped"
     else
-        saida=$(PYTHONPATH=src "$PY" -m dongle_rescue.cli.main doctor 2>&1)
-        if [ -z "$saida" ]; then
-            falha "\`python -m\` nao imprimiu nada (guard __main__ ausente?)"
+        output=$(PYTHONPATH=src "$PY" -m dongle_rescue.cli.main doctor 2>&1)
+        if [ -z "$output" ]; then
+            fail "\`python -m\` printed nothing (__main__ guard missing?)"
         else
-            ok "o CLI produz saida"
-            for esperado in "kernel release:" "journalctl available:" "reboot pending:" ; do
-                if echo "$saida" | grep -q "$esperado"; then ok "reporta '$esperado'"
-                else falha "nao reporta '$esperado' (host real nao injetado?)"; fi
+            ok "CLI produces output"
+            for expected in "kernel release:" "journalctl available:" "reboot pending:" ; do
+                if echo "$output" | grep -q "$expected"; then ok "reports '$expected'"
+                else fail "does not report '$expected' (real host not injected?)"; fi
             done
         fi
     fi
 fi
 
-# -------------------------------------------------------------- segredos ---
-if rodar secrets; then
-    titulo "SEGREDOS"
-    padroes='ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|gho_[A-Za-z0-9]{30,}|BEGIN [A-Z ]*PRIVATE KEY|(password|senha|passwd)[[:space:]]*[:=][[:space:]]*["\x27][^"\x27]{3,}'
-    if git grep -nEI "$padroes" -- . >/dev/null 2>&1; then
-        falha "segredo na arvore de trabalho"
-        git grep -nEI "$padroes" -- . | head -5 | sed 's/^/          /'
+# ---------------------------------------------------------------- secrets ---
+if should_run secrets; then
+    title "SECRETS"
+    # `senha` is Portuguese for "password": the tree scan intentionally matches
+    # password assignments in English and Portuguese (plus passwd).
+    patterns='ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|gho_[A-Za-z0-9]{30,}|BEGIN [A-Z ]*PRIVATE KEY|(password|senha|passwd)[[:space:]]*[:=][[:space:]]*["\x27][^"\x27]{3,}'
+    if git grep -nEI "$patterns" -- . >/dev/null 2>&1; then
+        fail "secret in working tree"
+        git grep -nEI "$patterns" -- . | head -5 | sed 's/^/          /'
     else
-        ok "nenhum segredo na arvore de trabalho"
+        ok "no secrets in working tree"
     fi
     if [ "$QUICK" -eq 1 ]; then
-        aviso "--quick: varredura de historico pulada"
-    elif git log -p --all -G "$padroes" --oneline 2>/dev/null | head -1 | grep -q .; then
-        falha "segredo no historico"
-        git log --all -G "$padroes" --oneline 2>/dev/null | head -3 | sed 's/^/          /'
+        warn "--quick: history scan skipped"
+    elif git log -p --all -G "$patterns" --oneline 2>/dev/null | head -1 | grep -q .; then
+        fail "secret in history"
+        git log --all -G "$patterns" --oneline 2>/dev/null | head -3 | sed 's/^/          /'
     else
-        ok "nenhum segredo no historico completo"
+        ok "no secrets in full history"
     fi
 fi
 
-# ---------------------------------------------------------------- resumo ---
-titulo "RESUMO"
-if [ ${#AVISOS[@]} -gt 0 ]; then
-    printf '  avisos (%d):\n' "${#AVISOS[@]}"
-    for a in "${AVISOS[@]}"; do printf '    - %s\n' "$a"; done
+# ---------------------------------------------------------------- summary ---
+title "SUMMARY"
+if [ ${#WARNINGS[@]} -gt 0 ]; then
+    printf '  warnings (%d):\n' "${#WARNINGS[@]}"
+    for a in "${WARNINGS[@]}"; do printf '    - %s\n' "$a"; done
 fi
-if [ ${#FALHAS[@]} -eq 0 ]; then
-    printf '\n  TUDO VERDE\n\n'; exit 0
+if [ ${#FAILURES[@]} -eq 0 ]; then
+    printf '\n  ALL GREEN\n\n'; exit 0
 fi
-printf '\n  %d FALHA(S):\n' "${#FALHAS[@]}"
-for f in "${FALHAS[@]}"; do printf '    - %s\n' "$f"; done
+printf '\n  %d FAILURE(S):\n' "${#FAILURES[@]}"
+for f in "${FAILURES[@]}"; do printf '    - %s\n' "$f"; done
 printf '\n'
 exit 1

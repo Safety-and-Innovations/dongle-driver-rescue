@@ -1,80 +1,80 @@
 # ARCHITECTURE — Dongle Driver Rescue V1
 
-- **Status:** Base aprovada no Milestone 3 (consolidação após pesquisa)
+- **Status:** Baseline approved in Milestone 3 (consolidation after research)
 - **Stack:** Python 3.12+ stdlib ([ADR 0001](adr/0001-stack-python.md))
-- **Princípios:** evidência citada em toda conclusão, UNKNOWN válido,
-  saída determinística ([ADR 0003](adr/0003-evidencia-determinismo.md))
+- **Principles:** cited evidence for every conclusion, UNKNOWN valid,
+  deterministic output ([ADR 0003](adr/0003-evidence-determinism.md))
 
-## Mapa de módulos
+## Module map
 
 ```text
 src/dongle_rescue/
-├── cli/            # argparse; comandos identify|diagnose|repair|verify|
+├── cli/            # argparse; commands identify|diagnose|repair|verify|
 │                   # rollback|history|report|doctor; flags --json --verbose
 │                   # --debug --non-interactive --no-network
-├── core/           # types.py (domínio), diagnosis.py (máquina A-E),
-│                   # confidence.py (regras de atribuição)
-├── usb/            # enumeration via sysfs + lsusb fallback; parsing de
-│                   # descritores; modalias builder
+├── core/           # types.py (domain), diagnosis.py (A-E machine),
+│                   # confidence.py (assignment rules)
+├── usb/            # enumeration via sysfs + lsusb fallback; descriptor
+│                   # parsing; modalias builder
 ├── linux/          # modules.alias parser, modinfo wrapper, dmesg/journalctl
 │                   # reader, udev/modprobe.d inspectors
-├── windows/        # V1 somente leitura: Get-PnpDevice/pnputil parsers
-│                   # (documentado, executado só em host Windows)
-├── identification/ # cadeia de camadas SPEC §7; resolução por revisão
+├── windows/        # V1 read-only: Get-PnpDevice/pnputil parsers
+│                   # (documented, runs only on Windows hosts)
+├── identification/ # SPEC §7 layer chain; revision-based resolution
 │                   # (btrtl ic_id_table etc.)
-├── drivers/        # candidates de modules.alias + base chipsets.json;
+├── drivers/        # modules.alias candidates + chipsets.json base;
 │                   # new_id feasibility (incl. .no_dynamic_id)
-├── firmware/       # modinfo -F firmware → dmesg → WHENCE index → pacote
-│                   # da distro (ADR 0002 S4)
-├── diagnostics/    # estados B/C/D/E detectors sobre evidência
-├── repair/         # transações, dry-run planner, new_id/bind executor,
-│                   # persistência modprobe.d/udev
-├── rollback/       # journal de transações idempotentes
-├── verification/   # pós-reparo: interface/iw scan/HCI adapter checks
-├── security/       # validação S1-S7 (allowlist binários, gramáticas)
-├── provenance/     # Evidence objects e serialização
-├── reporting/      # texto humano (formato SPEC §40) + JSON schema v1
-└── data/           # chipsets.json gerado de docs/research/*.md
+├── firmware/       # modinfo -F firmware → dmesg → WHENCE index → distro
+│                   # package (ADR 0002 S4)
+├── diagnostics/    # B/C/D/E state detectors over evidence
+├── repair/         # transactions, dry-run planner, new_id/bind executor,
+│                   # modprobe.d/udev persistence
+├── rollback/       # idempotent transaction journal
+├── verification/   # post-repair: interface/iw scan/HCI adapter checks
+├── security/       # S1-S7 validation (binary allowlist, grammars)
+├── provenance/     # Evidence objects and serialization
+├── reporting/      # human-readable text (SPEC §40 format) + JSON schema v1
+└── data/           # chipsets.json generated from docs/research/*.md
 ```
 
-## Fluxo principal (`dongle-rescue diagnose`)
+## Main flow (`dongle-rescue diagnose`)
 
 ```text
 usb.enumerate ──► identification.resolve ──► drivers.candidates
                                               │
              ┌────────────────────────────────┤
              ▼                                ▼
-      firmware.requirements            diagnostics.classify ──► estado A-E/UNKNOWN
-             │                                │
-             └────────────► reporting.emit ◄──┘
-                            (texto | JSON determinístico)
+       firmware.requirements            diagnostics.classify ──► A-E/UNKNOWN state
+              │                                │
+              └────────────► reporting.emit ◄──┘
+                             (text | deterministic JSON)
 ```
 
-## Invariantes entre módulos
+## Cross-module invariants
 
-1. Nenhum módulo fala com o disco/sistema direto: tudo via `host.Host`
-   (injeção; testes usam fixtures sintéticos).
-2. Fronteiras externas passam pelas gramáticas de `types.py`
-   (hex4, nome de módulo, path de firmware).
-3. `chipsets.json` é dado versionado com confiança+citação por linha;
-   regenerado dos docs de pesquisa, nunca editado à mão no código.
-4. Reparo só existe como plano (dry-run) + transação com rollback;
-   execução exige consentimento explícito.
-5. Rede: um único ponto de saída, desligável com `--no-network`.
+1. No module talks to disk/system directly: everything via `host.Host`
+   (injection; tests use synthetic fixtures).
+2. External boundaries go through the `types.py` grammars
+   (hex4, module name, firmware path).
+3. `chipsets.json` is versioned data with confidence+citation per line;
+   regenerated from research docs, never hand-edited in code.
+4. Repair exists only as a plan (dry-run) + transaction with rollback;
+   execution requires explicit consent.
+5. Network: a single egress point, switchable off with `--no-network`.
 
-## Decisões abertas → RESOLVIDAS pela pesquisa (M2)
+## Open decisions → RESOLVED by research (M2)
 
-1. **Feasibility de `new_id` por driver** (`docs/research/realtek.md` §1,
-   `linux-kernel.md` §3): `rtl8xxxu` tem `.no_dynamic_id = 1` — Estado B para
-   os chips AC da Realtek NÃO tem reparo por bind dinâmico; o planner consulta
-   matriz de capacidade por módulo (`drivers/new_id_feasible: bool`) e produz
-   diagnóstico+alternativa quando infeasible.
-2. **Persistência do bind**: alias em `/etc/modprobe.d/*.conf`
-   (`linux-kernel.md` §4) — declarativo, reversível, sobrevive a upgrade.
-3. **Pacotes de firmware**: mapa arquivo→pacote por família de distro
-   (`firmware-supply-chain.md`, `mediatek-atheros.md` §6); origem sempre
-   gerenciador da distro ou git upstream com hash (ADR 0002 S4).
-4. **Colisões de alias são reais** (`mediatek-atheros.md` §5): candidatos
-   múltiplos por VID:PID; dmesg + bound driver arbitraram.
-5. **Divergência de kernel** (host real): diagnosticar sempre contra o tree
-   em execução e sinalizar reboot pendente (kernel novo instalado).
+1. **`new_id` feasibility per driver** (`docs/research/realtek.md` §1,
+   `linux-kernel.md` §3): `rtl8xxxu` has `.no_dynamic_id = 1` — State B for
+   Realtek AC chips has NO dynamic-bind repair; the planner consults
+   a per-module capability matrix (`drivers/new_id_feasible: bool`) and produces
+   a diagnosis+alternative when infeasible.
+2. **Bind persistence**: alias in `/etc/modprobe.d/*.conf`
+   (`linux-kernel.md` §4) — declarative, reversible, survives upgrades.
+3. **Firmware packages**: file→package map per distro family
+   (`firmware-supply-chain.md`, `mediatek-atheros.md` §6); source is always
+   the distro package manager or upstream git with hash (ADR 0002 S4).
+4. **Alias collisions are real** (`mediatek-atheros.md` §5): multiple
+   candidates per VID:PID; dmesg + bound driver arbitrate.
+5. **Kernel divergence** (real host): always diagnose against the running
+   tree and flag a pending reboot (new kernel installed).
